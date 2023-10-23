@@ -1,3 +1,10 @@
+# Don't track the dataset through git, as it's giant
+/dataset/*.csv
+
+
+
+# All the following are Python3 defaults fron GitHub
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
