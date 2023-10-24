@@ -15,4 +15,4 @@ Predicting the sentiment of Amazon reviews based of their text
 4. Download the dataset [here](https://drive.google.com/file/d/0Bz8a_Dbh9QhbZVhsUnRWRDhETzA/view)
     - You'll have to extract the tarball to get to the plain-text <code>.csv</code> files; Windows 11 and Linux can do this natively, or try [7-Zip](https://www.7-zip.org/download.html)
 5. Copy the two <code>.csv</code> files and <code>readme.txt</code> from the dataset to the <code>./dataset</code> folder of your clone
-6. Run <code>test_install.py</code> (I haven't made this yet) to verify that your environment is configured correctly and that you can import data
+6. Run <code>test_install.py</code> to verify that your environment is configured correctly and that you can import data
