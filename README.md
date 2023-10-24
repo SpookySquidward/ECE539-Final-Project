@@ -4,7 +4,7 @@ Predicting the sentiment of Amazon reviews based of their text
 ### Getting Started
 1. Make sure you have installed the following dependencies:
     - [<code>git</code>](https://git-scm.com/downloads) (run <code>git --version</code> from a command line to check, and upgrade if requested)
-    - [Python 3.11](https://www.python.org/downloads/release/python-3116/) (run <code>python --version</code> from a command line to check your current version; you can select your installation when opening the project, too)
+    - [Python 3.11](https://www.python.org/downloads/release/python-3116/) (run <code>python --version</code> or <code>py --version</code> from a command line to check your current version; you can select your installation when opening the project, too)
     - [VS Code](https://code.visualstudio.com/download) (or use your own IDE, I don't care)
 2. Clone this repo to your local machine
     - For VS Code, follow Microsoft's docs [here](https://code.visualstudio.com/docs/sourcecontrol/github); I recommend signing into your GitHub account from VS Code to easily push your changes to the central repo (see the docs [here](https://code.visualstudio.com/docs/sourcecontrol/github))
