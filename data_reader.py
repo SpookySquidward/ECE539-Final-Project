@@ -108,7 +108,3 @@ class data_reader:
 
         for i_batch in range(math.ceil((len(self._data) - self._read_location) / batch_size)):
             yield self.read(batch_size)
-        
-        # # The last batch might be smaller than the rest
-        # if self._read_location < len(self._data):
-        #     yield self.read(len(self._data) - self._read_location)
