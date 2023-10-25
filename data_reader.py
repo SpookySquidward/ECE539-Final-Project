@@ -1,8 +1,10 @@
 # Reads our testing and training data from a csv file in the format specified for Xiang Zhang's dataset
 
-import numpy as np
-import pandas as pd
 import os
+import csv
+import random
+import typing
+import math
 
 
 # This is the actual reader object
@@ -11,12 +13,7 @@ class data_reader:
     csv_delimiter = ','
     csv_quotechar = '"'
     csv_doublequote = True
-    csv_columns = ["stars", "title", "body"]
-    csv_dtypes = {
-        "stars": np.double,
-        "title": str,
-        "body": str
-    }
+    csv_encoding = "utf-8"
     
     
     def __init__(self) -> None:
@@ -45,8 +42,10 @@ class data_reader:
             raise ValueError(f"Specified path {csv_path} is not a .csv file!")
         
         # Read the file
-        self._data = pd.read_csv(csv_path, sep=self.csv_delimiter, quotechar=self.csv_quotechar, doublequote=self.csv_doublequote, header=None, names=self.csv_columns, dtype=self.csv_dtypes)
-        self._data_length = self._data.shape[0]
+        with open(csv_path, encoding=self.csv_encoding) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=self.csv_delimiter, quotechar=self.csv_quotechar, doublequote=self.csv_doublequote)
+            self._data = list(csv_reader)
+        
         # Reset read index
         self._read_location = 0
     
@@ -58,10 +57,15 @@ class data_reader:
             random_state (int, optional): If specified, defines the seed for pseudo-random shuffling. Defaults to None.
         """
         
-        self._data = self._data.sample(frac=1, random_state=random_state)
+        # Shuffle the data array in-place
+        random.seed(random_state)
+        random.shuffle(self._data)
+        
+        # Reset read index
+        self._read_location = 0
     
     
-    def read(self, num_lines = 1) -> pd.DataFrame:
+    def read(self, num_lines = 1) -> list[list[str]]:
         """Read one or mode lines of data
 
         Args:
@@ -71,7 +75,19 @@ class data_reader:
             pd.DataFrame: a list of up to num_lines data entries, with column labels "stars", "title", and "body". If fewer than num_lines data entries remain unread since the last shuffle call, returns the remaining unread lines; if all lines have been read, returns None.
         """
         
-        if self._read_location <= self._data_length:
-            return self._data.iloc[self._read_location : self._read_location + num_lines]
+        if self._read_location < len(self._data):
+            starting_index = self._read_location
+            self._read_location += num_lines
+            self._read_location = min(self._read_location, len(self._data))
+            return self._data[starting_index : self._read_location]
         else:
             return None
+    
+    
+    def read_epoch(self, batch_size=10) -> typing.Generator[list[list[str]], None, None]:
+        for i_batch in range(math.ceil((len(self._data) - self._read_location) / batch_size)):
+            yield self.read(batch_size)
+        
+        # # The last batch might be smaller than the rest
+        # if self._read_location < len(self._data):
+        #     yield self.read(len(self._data) - self._read_location)
