@@ -51,10 +51,12 @@ class data_reader:
     
     
     def shuffle(self, random_state: int = None) -> None:
-        """Once data has been loaded, this method shuffles its order so read() calls are pseudo-random
+        """Once data has been loaded, this method shuffles its order so read() calls yield data in
+        a pseudo-random order
 
         Args:
-            random_state (int, optional): If specified, defines the seed for pseudo-random shuffling. Defaults to None.
+            random_state (int, optional): If specified, defines the seed for pseudo-random
+            shuffling. Defaults to None.
         """
         
         # Shuffle the data array in-place
@@ -65,26 +67,45 @@ class data_reader:
         self._read_location = 0
     
     
-    def read(self, num_lines = 1) -> list[list[str]]:
+    def read(self, num_samples = 1) -> list[list[str]]:
         """Read one or mode lines of data
 
         Args:
-            num_lines (int, optional): The number of lines to read. Defaults to 1.
+            num_samples (int, optional): The number of samples to return at once. Defaults to 1.
 
         Returns:
-            pd.DataFrame: a list of up to num_lines data entries, with column labels "stars", "title", and "body". If fewer than num_lines data entries remain unread since the last shuffle call, returns the remaining unread lines; if all lines have been read, returns None.
+            list[list[str]]: a list of num_samples samples, each of which is itself a 3-element
+            list of the form [stars, title, body], where all three fields are strings. If fewer
+            than num_samples data entries remain unread since the last shuffle call, returns the
+            remaining unread lines; if all lines have been read, returns None.
         """
         
         if self._read_location < len(self._data):
             starting_index = self._read_location
-            self._read_location += num_lines
+            self._read_location += num_samples
             self._read_location = min(self._read_location, len(self._data))
             return self._data[starting_index : self._read_location]
         else:
             return None
     
     
-    def read_epoch(self, batch_size=10) -> typing.Generator[list[list[str]], None, None]:
+    def read_epoch(self, batch_size=10) -> typing.Iterable[list[list[str]]]:
+        """Returns as many read() call outputs as are required to read all the data which had not
+        been read since initialization or the lase shuffle() call using the requested batch size as
+        the number of samples per read() request
+
+        Args:
+            batch_size (int, optional): The number of samples to return at each iteration. Defaults
+            to 10.
+
+        Yields:
+            list[list[str]]: a list of batch_size samples, each of which is itself a 3-element
+            list of the form [stars, title, body], where all three fields are strings. The last
+            list of samples returned will contain less than batch_size samples if the number of
+            unread samples is not evenly divisible by batch_size. Each returned value is of the
+            same format as read() would return.
+        """
+
         for i_batch in range(math.ceil((len(self._data) - self._read_location) / batch_size)):
             yield self.read(batch_size)
         

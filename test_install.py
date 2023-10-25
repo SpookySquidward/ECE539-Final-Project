@@ -9,12 +9,12 @@ csv_path = os.path.join(os.path.curdir, "dataset", "test.csv")
 reader.open_csv(csv_path)
 
 # Read a few lines
-print(reader.read(num_lines=5))
+print(reader.read(num_samples=5))
 
 # Shuffle the data and read a few more lines
 reader.shuffle()
 print()
-print(reader.read(num_lines=5))
+print(reader.read(num_samples=5))
 
 # Read a full epoch of training data
 reader.shuffle()
