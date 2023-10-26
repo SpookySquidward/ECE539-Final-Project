@@ -60,7 +60,7 @@ class review:
 
 
 
-class data_reader:
+class csv_reader:
     """A data reader which can extract features and labels from a CSV dataset
     """
     # CSV file format parameters
@@ -98,7 +98,7 @@ class data_reader:
         
         # Read the file
         with open(csv_path, encoding=self.csv_encoding) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=data_reader.csv_delimiter, quotechar=data_reader.csv_quotechar, doublequote=data_reader.csv_doublequote)
+            csv_reader = csv.reader(csv_file, delimiter=csv_reader.csv_delimiter, quotechar=csv_reader.csv_quotechar, doublequote=csv_reader.csv_doublequote)
             
             for line_i, line_items in enumerate(csv_reader):
                 # Make sure we have a valid line ('"<label>","<title>","<body>"')
