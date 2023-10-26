@@ -1,4 +1,6 @@
-# Reads our testing and training data from a csv file in the format specified for Xiang Zhang's dataset
+"""Module for handling Amazon reviews, including reading/writing to CSV files in the same format
+specified for Xiang Zhang's dataset
+"""
 
 import os
 import csv
@@ -7,8 +9,60 @@ import typing
 import math
 
 
-# This is the actual reader object
+class review:
+    """A sample from one of our review datasets, including the title, body, and label of the review
+    """
+
+    def __init__(self, title: str = None, body: str = None, label: str = None) -> None:
+        """Initializes a review with the specified data fields
+
+        Args:
+            title (str, optional): The title of the review. Defaults to None.
+            body (str, optional): The body of the review. Defaults to None.
+            label (str, optional): The review label. Defaults to None.
+        """
+    
+        self.title = title
+        self.body = body
+        self.label = label
+    
+
+    def __str__(self) -> str:
+        out_str = "Label: "
+        if self.label:
+            out_str += f'"{self.label}"'
+        else:
+            out_str += 'None'
+        
+        out_str += '; Title: '
+        if self.title:
+            out_str += f'"{self.title}"'
+        else:
+            out_str += 'None'
+        
+        out_str += '; Body: '
+        if self.body:
+            # Limit to 100 characters for easier parsing
+            char_limit = 100
+            remaining_chars = char_limit - len(out_str) - 5
+            if remaining_chars <= 0:
+                out_str += '"..."'
+            else:
+                out_str += f'"{self.body[:remaining_chars]}..."'
+        else:
+            out_str += 'None'
+        
+        return out_str
+    
+
+    def __repr__(self):
+        return str(self)
+
+
+
 class data_reader:
+    """A data reader which can extract features and labels from a CSV dataset
+    """
     # CSV file format parameters
     csv_delimiter = ','
     csv_quotechar = '"'
@@ -17,12 +71,10 @@ class data_reader:
     
     
     def __init__(self) -> None:
-        """A data reader which can extract features and labels from a CSV dataset
+        """Creates a new data_reader object
         """
-        
-        # A pandas dataframe will store the CSV temporarily in RAM
-        self._data = None
-        self._data_length = None
+        # A list will store the CSV temporarily in RAM
+        self._data = []
         # Store the index of the next-to-read line of the dataframe
         self._read_location = 0
     
@@ -36,6 +88,9 @@ class data_reader:
         Raises:
             ValueError: if an invalid csv_path was specified
         """
+
+        # Re-initialize data list and read location
+        self.__init__()
         
         # Make sure we were actually passed a CSV file
         if os.path.splitext(csv_path)[1].lower() != '.csv':
@@ -44,10 +99,15 @@ class data_reader:
         # Read the file
         with open(csv_path, encoding=self.csv_encoding) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=data_reader.csv_delimiter, quotechar=data_reader.csv_quotechar, doublequote=data_reader.csv_doublequote)
-            self._data = list(csv_reader)
-        
-        # Reset read index
-        self._read_location = 0
+            
+            for line_i, line_items in enumerate(csv_reader):
+                # Make sure we have a valid line ('"<label>","<title>","<body>"')
+                if not len(line_items) == 3:
+                    raise ValueError(f'Error on line {line_i + 1} of {csv_path}: got illegal csv line items {line_items}, expected three items in the format \'"<label>","<title>","<body>"\'.')
+
+                # Create a new review object for each sample
+                review_object = review(label=line_items[0], title=line_items[1], body=line_items[2])
+                self._data.append(review_object)
     
     
     def shuffle(self, random_state: int = None) -> None:
@@ -67,17 +127,17 @@ class data_reader:
         self._read_location = 0
     
     
-    def read(self, num_samples = 1) -> list[list[str]]:
+    def read(self, num_samples = 1) -> list[review]:
         """Read one or mode lines of data
 
         Args:
             num_samples (int, optional): The number of samples to return at once. Defaults to 1.
 
         Returns:
-            list[list[str]]: a list of num_samples samples, each of which is itself a 3-element
-            list of the form [stars, title, body], where all three fields are strings. If fewer
-            than num_samples data entries remain unread since the last shuffle call, returns the
-            remaining unread lines; if all lines have been read, returns None.
+            list[review]: a list of num_samples reviews which have not yet been read by a previous
+            read() call since the last shuffle() call. If fewer than num_samples data entries
+            remain unread since the last shuffle call, returns the remaining unread lines; if all
+            lines have been read, returns None.
         """
         
         if self._read_location < len(self._data):
@@ -89,21 +149,19 @@ class data_reader:
             return None
     
     
-    def read_epoch(self, batch_size=10) -> typing.Iterable[list[list[str]]]:
+    def read_epoch(self, batch_size=10) -> typing.Iterable[list[review]]:
         """Returns as many read() call outputs as are required to read all the data which had not
-        been read since initialization or the lase shuffle() call using the requested batch size as
-        the number of samples per read() request
+        been read since initialization or the lase shuffle() call, using the requested batch size
+        as the number of samples per read() request
 
         Args:
             batch_size (int, optional): The number of samples to return at each iteration. Defaults
             to 10.
 
         Yields:
-            list[list[str]]: a list of batch_size samples, each of which is itself a 3-element
-            list of the form [stars, title, body], where all three fields are strings. The last
-            list of samples returned will contain less than batch_size samples if the number of
-            unread samples is not evenly divisible by batch_size. Each returned value is of the
-            same format as read() would return.
+            list[review]: a list of batch_size reviews. The last list of samples returned will
+            contain fewer than batch_size samples if the number of unread samples is not evenly
+            divisible by batch_size.
         """
 
         for i_batch in range(math.ceil((len(self._data) - self._read_location) / batch_size)):
