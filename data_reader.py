@@ -43,7 +43,7 @@ class data_reader:
         
         # Read the file
         with open(csv_path, encoding=self.csv_encoding) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=self.csv_delimiter, quotechar=self.csv_quotechar, doublequote=self.csv_doublequote)
+            csv_reader = csv.reader(csv_file, delimiter=data_reader.csv_delimiter, quotechar=data_reader.csv_quotechar, doublequote=data_reader.csv_doublequote)
             self._data = list(csv_reader)
         
         # Reset read index
