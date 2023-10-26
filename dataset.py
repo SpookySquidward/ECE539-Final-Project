@@ -7,6 +7,7 @@ import csv
 import random
 import typing
 import math
+import io
 
 
 # CSV file format parameters
@@ -14,6 +15,7 @@ csv_delimiter = ','
 csv_quotechar = '"'
 csv_doublequote = True
 csv_encoding = "utf-8"
+csv_quoting = csv.QUOTE_ALL
 
 
 class review:
@@ -166,3 +168,52 @@ class csv_reader:
 
         for i_batch in range(math.ceil((len(self._data) - self._read_location) / batch_size)):
             yield self.read(batch_size)
+
+
+class csv_writer():
+    """An object which can write reviews to a csv file
+    """
+
+
+    def __init__(self) -> None:
+        """Creates a new csv_writer object
+        """
+        
+        self._writer = None
+
+    
+    def use_csv(self, csv_file: io.TextIOWrapper) -> None:
+        """Assigns a target csv file for writing
+
+        Args:
+            csv_file (io.TextIOWrapper): the file to write to; use `with open(<csv_path>, mode="w",
+            encoding=dataset.csv_encoding) as csv_file:` to get this file
+        """
+
+        self._writer = csv.writer(csv_file, delimiter=csv_delimiter, quotechar=csv_quotechar, doublequote=csv_doublequote, quoting=csv_quoting)
+    
+
+    def _review_to_csv_list(review: review) -> list[str]:
+        """Converts a review to a list of strings for writing to a CSV file
+
+        Args:
+            out_review (review): Review to be converted
+
+        Returns:
+            list[str]: a list of review fields in the form of `[<label>, <title>, <body>]`
+        """
+
+        return [review.label, review.title, review.body]
+
+
+    def write_review(self, review: review) -> None:
+        """Writes one review to the output csv file
+
+        Args:
+            out_review (review): The review to write
+        """
+        
+        self._writer.writerow(csv_writer._review_to_csv_list(review))
+    
+    def write_reviews(self, reviews: list[review]) -> None:
+        self._writer.writerows(csv_writer._review_to_csv_list(review) for review in reviews)
