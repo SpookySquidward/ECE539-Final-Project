@@ -9,6 +9,13 @@ import typing
 import math
 
 
+# CSV file format parameters
+csv_delimiter = ','
+csv_quotechar = '"'
+csv_doublequote = True
+csv_encoding = "utf-8"
+
+
 class review:
     """A sample from one of our review datasets, including the title, body, and label of the review
     """
@@ -59,16 +66,9 @@ class review:
         return str(self)
 
 
-
 class csv_reader:
     """A data reader which can extract features and labels from a CSV dataset
     """
-    # CSV file format parameters
-    csv_delimiter = ','
-    csv_quotechar = '"'
-    csv_doublequote = True
-    csv_encoding = "utf-8"
-    
     
     def __init__(self) -> None:
         """Creates a new data_reader object
@@ -97,8 +97,8 @@ class csv_reader:
             raise ValueError(f"Specified path {csv_path} is not a .csv file!")
         
         # Read the file
-        with open(csv_path, encoding=self.csv_encoding) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=csv_reader.csv_delimiter, quotechar=csv_reader.csv_quotechar, doublequote=csv_reader.csv_doublequote)
+        with open(csv_path, encoding=csv_encoding) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=csv_delimiter, quotechar=csv_quotechar, doublequote=csv_doublequote)
             
             for line_i, line_items in enumerate(csv_reader):
                 # Make sure we have a valid line ('"<label>","<title>","<body>"')
