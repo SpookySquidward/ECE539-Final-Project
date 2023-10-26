@@ -1,12 +1,12 @@
 # Make sure all required libraries can be imported
 import numpy, torch, matplotlib, sklearn
-import data_reader
+import dataset
 import os
 import csv
 
 
 # Open test.csv
-reader = data_reader.data_reader()
+reader = dataset.data_reader()
 csv_path = os.path.join(os.path.curdir, "dataset", "test.csv")
 reader.open_csv(csv_path)
 
@@ -56,7 +56,7 @@ reader.shuffle()
 # own custom writer
 remapped_path = os.path.join(os.path.curdir, "dataset", "remapped_test.csv")
 with open(remapped_path, "w") as out_file:
-    writer = csv.writer(out_file, delimiter=data_reader.data_reader.csv_delimiter, quotechar=data_reader.data_reader.csv_quotechar, doublequote=data_reader.data_reader.csv_doublequote, quoting=csv.QUOTE_ALL)
+    writer = csv.writer(out_file, delimiter=dataset.data_reader.csv_delimiter, quotechar=dataset.data_reader.csv_quotechar, doublequote=dataset.data_reader.csv_doublequote, quoting=csv.QUOTE_ALL)
     
     # Read in all our data and get rid of all 3-star reviews; remap other reviews to either "pos"
     # or "neg"
@@ -73,7 +73,7 @@ with open(remapped_path, "w") as out_file:
     # Note: the csv module also has a 
 
 # Now we can read in the new data to make sure it was processed correctly
-reader_remapped = data_reader.data_reader()
+reader_remapped = dataset.data_reader()
 reader_remapped.open_csv(remapped_path)
 print()
 print(reader_remapped.read(num_samples=10))
