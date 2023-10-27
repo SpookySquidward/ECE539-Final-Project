@@ -103,6 +103,10 @@ class csv_reader:
             csv_reader = csv.reader(csv_file, delimiter=csv_delimiter, quotechar=csv_quotechar, doublequote=csv_doublequote)
             
             for line_i, line_items in enumerate(csv_reader):
+                # Ignore blank lines
+                if len(line_items) == 0 or (len(line_items) == 1 and line_items[0].isspace()):
+                    continue
+
                 # Make sure we have a valid line ('"<label>","<title>","<body>"')
                 if not len(line_items) == 3:
                     raise ValueError(f'Error on line {line_i + 1} of {csv_path}: got illegal csv line items {line_items}, expected three items in the format \'"<label>","<title>","<body>"\'.')
