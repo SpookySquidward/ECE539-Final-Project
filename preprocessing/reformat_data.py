@@ -43,14 +43,19 @@ def main():
     test_path = os.path.join(parent, "dataset", "test.csv")
     train_path = os.path.join(parent, "dataset", "train.csv")
 
-    # Paths for new files
-    formatted_test_path = os.path.join(parent, "dataset", "formatted_test.csv")
-    formatted_train_path = os.path.join(parent, "dataset", "formatted_train.csv")
-
     # Reformat data
-    format_data(test_path).to_csv(path_or_buf=formatted_test_path, index=False)
-    format_data(train_path).to_csv(path_or_buf=formatted_train_path, index=False)
+    formatted_test = format_data(test_path)
+    formatted_train = format_data(train_path)
 
+    # Write to csv
+    formatted_test.to_csv(path_or_buf=os.path.join(parent, "dataset", "formatted_test.csv"), index=False, chunksize=10000)
+    formatted_train.to_csv(path_or_buf=os.path.join(parent, "dataset", "formatted_train.csv"), index=False, chunksize=10000)
+
+    # Check sizes
+    rows, columns = formatted_test.shape
+    print("Dataframe shape for test\nExpected rows: 2400000", "\nActual rows: ", rows)
+    rows, columns = formatted_train.shape
+    print("\nDataframe shape for train\nExpected rows: 520000", "\nActual rows: ", rows)
 
 if __name__ == "__main__":
     main()
