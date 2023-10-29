@@ -21,7 +21,7 @@ def format_data(path: str):
     :param path: path to review csv file
     :return: formatted data as dataframe
     """
-    df = pd.read_csv(filepath_or_buffer=path, names=["star_rating", "headline", "body"])
+    df = pd.read_csv(filepath_or_buffer=path, names=["star_rating", "title", "body"])
 
     # From stars to sentiment
     df['star_rating'] = df['star_rating'].apply(snap_reviews)
@@ -29,14 +29,17 @@ def format_data(path: str):
     # Discard neutral reviews
     df = df[df['star_rating'] != "neutral"]
 
+    # Encapsulate in quotation marks
+    # df = df.map(lambda x: f'"{x}"')
+
     # Change header
-    df.set_axis(['sentiment', 'headline', 'body'], axis='columns')
+    df.set_axis(['sentiment', 'title', 'body'], axis='columns')
     return df
 
 
 def main():
     # parent directory
-    parent = os.path.join(os.getcwd(), os.pardir)
+    parent = os.path.join(os.path.curdir, os.pardir) # Replaced os.getcwd() with os.path.curdir
     parent = os.path.abspath(parent)
 
     # Define paths of test and training
@@ -48,14 +51,14 @@ def main():
     formatted_train = format_data(train_path)
 
     # Write to csv
-    formatted_test.to_csv(path_or_buf=os.path.join(parent, "dataset", "formatted_test.csv"), index=False, chunksize=10000)
-    formatted_train.to_csv(path_or_buf=os.path.join(parent, "dataset", "formatted_train.csv"), index=False, chunksize=10000)
+    formatted_test.to_csv(path_or_buf=os.path.join(parent, "dataset", "formatted_test.csv"), index=False)
+    formatted_train.to_csv(path_or_buf=os.path.join(parent, "dataset", "formatted_train.csv"), index=False)
 
     # Check sizes
     rows, columns = formatted_test.shape
-    print("Dataframe shape for test\nExpected rows: 2400000", "\nActual rows: ", rows)
+    print("Dataframe shape for test\nExpected rows: 520000", "\nActual rows: ", rows)
     rows, columns = formatted_train.shape
-    print("\nDataframe shape for train\nExpected rows: 520000", "\nActual rows: ", rows)
+    print("\nDataframe shape for train\nExpected rows: 2400000", "\nActual rows: ", rows)
 
 if __name__ == "__main__":
     main()
