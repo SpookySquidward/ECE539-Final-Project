@@ -33,7 +33,7 @@ def format_data(path: str):
     # df = df.map(lambda x: f'"{x}"')
 
     # Change header
-    df.set_axis(['sentiment', 'title', 'body'], axis='columns')
+    df = df.set_axis(['sentiment', 'title', 'body'], axis='columns')
     return df
 
 
