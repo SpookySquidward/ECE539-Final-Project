@@ -3,19 +3,22 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 
-def split_in_train_and_validation(path: Path, validation_size: float) -> None:
+def split_in_train_and_validation(train_data: Path | pd.DataFrame, validation_size: float) -> None:
     """
     Split a CSV into a training and validation set. Two new CSV files will be created.
-    :param path: path to training CSV
+    :param train_data: either path to training CSV OR dataframe with training data
     :param validation_size: size of validation set
     """
-    train_df = pd.read_csv(path)
-    train_df, val_df = train_test_split(train_df, train_size=1 - validation_size, random_state=11)
+
+    if isinstance(train_data, Path):
+        train_data = pd.read_csv(train_data)
+
+    train_df, val_df = train_test_split(train_data, train_size=1 - validation_size, random_state=11)
 
     # Save as CSV files - could be made to overwrite formatted train
     project_root = Path(__file__).parent.parent
-    train_df.to_csv(path_or_buf=project_root.joinpath("dataset", "new_formatted_train.csv"), index=False)
-    val_df.to_csv(path_or_buf=project_root.joinpath("dataset", "new_formatted_val.csv"), index=False)
+    train_df.to_csv(project_root.joinpath("dataset", "1formatted_train.csv"), index=False)
+    val_df.to_csv(project_root.joinpath("dataset", "1formatted_val.csv"), index=False)
 
 
 def main():
