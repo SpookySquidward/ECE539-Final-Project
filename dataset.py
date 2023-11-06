@@ -137,7 +137,8 @@ class csv_reader:
         """Read one or mode lines of data
 
         Args:
-            num_samples (int, optional): The number of samples to return at once. Defaults to 1.
+            num_samples (int, optional): The number of samples to return at once. If -1, returns
+            every unread sample. Defaults to 1.
 
         Returns:
             list[review]: a list of num_samples reviews which have not yet been read by a previous
@@ -146,13 +147,22 @@ class csv_reader:
             lines have been read, returns None.
         """
         
-        if self._read_location < len(self._data):
-            starting_index = self._read_location
-            self._read_location += num_samples
-            self._read_location = min(self._read_location, len(self._data))
-            return self._data[starting_index : self._read_location]
-        else:
+        # Check for data overscan (reading more data than exists)
+        if self._read_location >= len(self._data):
             return None
+
+        # Where to start resding from (self._read_location will be mutated)
+        starting_index = self._read_location
+        
+        # If num_samples is equal to -1, return all unread samples
+        if num_samples == -1:
+            self._read_location = len(self._data)
+            return self._data[starting_index :]
+        
+        # num_samples is positive, return up to that many samples
+        self._read_location += num_samples
+        self._read_location = min(self._read_location, len(self._data))
+        return self._data[starting_index : self._read_location]
     
     
     def read_epoch(self, batch_size: int = 10) -> typing.Iterable[list[review]]:
