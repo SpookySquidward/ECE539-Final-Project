@@ -1,7 +1,7 @@
 from pathlib import Path
 import pandas as pd
-from preprocessing.reformat_data import format_data
-from preprocessing.train_val_split import split_in_train_and_validation
+from reformat_data import format_data
+from train_val_split import split_in_train_and_validation
 
 
 def run_preprocessing_pipeline(train_path: Path, test_path: Path, intermediate_csvs = False) -> None:
