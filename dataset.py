@@ -133,7 +133,7 @@ class csv_reader:
         self._read_location = 0
     
     
-    def read(self, num_samples = 1) -> list[review]:
+    def read(self, num_samples: int = 1) -> list[review]:
         """Read one or mode lines of data
 
         Args:
@@ -155,7 +155,7 @@ class csv_reader:
             return None
     
     
-    def read_epoch(self, batch_size=10) -> typing.Iterable[list[review]]:
+    def read_epoch(self, batch_size: int = 10) -> typing.Iterable[list[review]]:
         """Returns as many read() call outputs as are required to read all the data which had not
         been read since initialization or the lase shuffle() call, using the requested batch size
         as the number of samples per read() request
@@ -174,7 +174,7 @@ class csv_reader:
             yield self.read(batch_size)
 
 
-class csv_writer():
+class csv_writer:
     """An object which can write reviews to a csv file
     """
 
@@ -219,5 +219,5 @@ class csv_writer():
         
         self._writer.writerow(csv_writer._review_to_csv_list(review))
     
-    def write_reviews(self, reviews: list[review]) -> None:
+    def write_reviews(self, reviews: typing.Iterable[review]) -> None:
         self._writer.writerows(csv_writer._review_to_csv_list(review) for review in reviews)
