@@ -53,11 +53,12 @@ def main():
     formatted_train.to_csv(project_root.joinpath("dataset", "formatted_train.csv"), index=False)
 
     # Check sizes
-    print("\n--> Running format_data")
-    rows, columns = formatted_test.shape
-    print("Dataframe shape for test\nExpected rows: 520000", "\nActual rows: ", rows)
+    print("--> Running format_data")
     rows, columns = formatted_train.shape
     print("\nDataframe shape for train\nExpected rows: 2400000", "\nActual rows: ", rows)
+    rows, columns = formatted_test.shape
+    print("\nDataframe shape for test\nExpected rows: 520000", "\nActual rows: ", rows)
+
 
 
 if __name__ == "__main__":
