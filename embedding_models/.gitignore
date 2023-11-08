@@ -1,0 +1,5 @@
+# Gensim word embedding models will live in this folder
+*
+!.gitignore
+!*.py
+!*.ipynb
