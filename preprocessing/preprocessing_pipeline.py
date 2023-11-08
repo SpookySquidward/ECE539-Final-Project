@@ -1,10 +1,9 @@
 from pathlib import Path
-import pandas as pd
 from reformat_data import format_data
 from train_val_split import split_in_train_and_validation
 
 
-def run_preprocessing_pipeline(train_path: Path, test_path: Path, intermediate_csvs = False) -> None:
+def run_preprocessing_pipeline(project_root: Path, train_path: Path, test_path: Path) -> None:
     """
     Run all preprocessing - this functions uses dataframes as intermediate representation.
     :param train_path: path to training data
@@ -12,21 +11,21 @@ def run_preprocessing_pipeline(train_path: Path, test_path: Path, intermediate_c
     :return:
     """
     # Reformat data
+    print("\n--> Running format_data")
     formatted_train = format_data(train_path)
     formatted_test = format_data(test_path)
 
-    if intermediate_csvs:
-        # Write to csv
-        project_root = Path(__file__).parent.parent
-        formatted_train_path = project_root.joinpath("dataset", "formatted_train.csv")
-        formatted_train.to_csv(formatted_train_path, index=False)
-        formatted_test.to_csv(project_root.joinpath("dataset", "formatted_test.csv"), index=False)
+    # Check sizes
+    rows, columns = formatted_test.shape
+    print("Dataframe shape for test\nExpected rows: 520000", "\nActual rows: ", rows)
+    rows, columns = formatted_train.shape
+    print("\nDataframe shape for train\nExpected rows: 2400000", "\nActual rows: ", rows)
 
-        split_in_train_and_validation(formatted_train_path, 0.2)
-    else:
-        # Use dataframes directly
-        split_in_train_and_validation(formatted_train, 0.2)
-        split_in_train_and_validation(formatted_test, 0.2)
+    # Write to csv
+    formatted_test.to_csv(project_root.joinpath("dataset", "formatted_test.csv"), index=False)
+
+    # Split train in train and validation
+    split_in_train_and_validation(formatted_train, 0.2)
 
 
 def main():
@@ -35,7 +34,7 @@ def main():
     raw_train_path = project_root.joinpath("dataset", "train.csv")
     raw_test_path = project_root.joinpath("dataset", "test.csv")
 
-    run_preprocessing_pipeline(raw_train_path, raw_test_path)
+    run_preprocessing_pipeline(project_root, raw_train_path, raw_test_path)
 
 if __name__ == "__main__":
     main()
