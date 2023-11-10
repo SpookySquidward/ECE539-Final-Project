@@ -169,34 +169,70 @@ class embedded_review_random_sampler(typing.Iterable):
         return sample_features, sample_label
         
 
-# TODO finish me!
-# class review_embedder_sampler(typing.Iterable):
-#     def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, review_label_mapping: dict[str, torch.Tensor], oov_feature = True, title_body_feature = True, chunk_size: int = 500):
-#         # Store parameters
-#         self._reviews = []
-#         self._embedder = embedder
-#         self._chunk_size = chunk_size
+class review_embedder_sampler(typing.Iterable):
+    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, review_label_mapping: dict[str, torch.Tensor], oov_feature = True, title_body_feature = True, chunk_size: int = 5000):
+        # Store parameters
+        self._reviews = reviews
+        self._embedder = embedder
+        self._review_label_mapping = review_label_mapping
+        self._oov_feature = oov_feature
+        self._title_body_feature = title_body_feature
+        self._chunk_size = chunk_size
     
     
-#     def __len__(self) -> int:
-#         return len(self._reviews)
+    def __len__(self) -> int:
+        return len(self._reviews)
     
     
-#     def __iter__(self) -> typing.Iterator[typing.Tuple[torch.Tensor, torch.Tensor]]:
-#         # Prepare to iterate through the data
-#         shuffle(self._reviews)
-#         self._current_chunk = []
-#         self._sample_read_location = 0
-#         self._load_next_chunk()
-#         return self
-    
-    
-#     def _load_next_chunk(self) -> bool:
-#         if self._sample_read_location >= len(self):
-#             # Out of data to read, exit early
-#             return False
+    def __iter__(self) -> typing.Iterator[typing.Tuple[torch.Tensor, torch.Tensor]]:
+        # Shuffle the reviews before iterating over them
+        shuffle(self._reviews)
         
-#         self._current_chunk = self._reviews[self._sample_read_location : self._sample_read_location + self._chunk_size]
+        # Set read location for reviews
+        self._review_read_location = 0
+        
+        # Initialize the first chunk of data
+        self._load_next_chunk()
+        
+        return self
+    
+    
+    def _load_next_chunk(self) -> bool:
+        # Exit early if no more data exists to read
+        if self._review_read_location >= len(self):
+            return False
+        
+        # Fetch the next chunk of data
+        next_chunk_reviews = self._reviews[self._review_read_location : self._review_read_location + self._chunk_size]
+        next_chunk_features, next_chunk_labels = self._embedder.embed_dataset_features_and_labels(next_chunk_reviews, self._review_label_mapping, self._oov_feature, self._title_body_feature)
+        self._current_chunk_features = next_chunk_features
+        self._current_chunk_labels = next_chunk_labels
+        self._chunk_read_location = 0
+        
+        # Update read location for next load call
+        self._review_read_location += self._chunk_size
+        
+        # Chunk was successfully loaded, return True
+        return True
+        
+    
+    def __next__(self) -> typing.Tuple[torch.Tensor, torch.Tensor]:
+        # Check to see if another chunk of data needs to be loaded
+        if self._chunk_read_location >= len(self._current_chunk_features):
+            chunk_load_success = self._load_next_chunk()
+            # Exit if no new reviews were found to embed
+            if not chunk_load_success:
+                raise StopIteration
+        
+        # Get the next sample
+        sample_feature = self._current_chunk_features[self._chunk_read_location]
+        sample_label = self._current_chunk_labels[self._chunk_read_location]
+        
+        # Update the chunk read position
+        self._chunk_read_location += 1
+        
+        # Return the requested sample
+        return sample_feature, sample_label
 
 
 # TODO this sampler could make repeated calls from an embedded_review_random_sampler to construct
