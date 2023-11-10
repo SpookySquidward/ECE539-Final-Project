@@ -168,7 +168,7 @@ class runner:
             self._val_acc_history.append(val_accuracy)
             
             # Find the most accurate (on the validation test set) model which has been trained so far
-            most_accurate_model_epoch = np.argmax(self._val_acc_history)
+            most_accurate_model_epoch = np.argmax(self._val_acc_history) + 1
             # If the current model is the most accurate one, save it to the disk, even if the
             # autosave interval hasn't been reached yet
             if most_accurate_model_epoch == self._epoch:
