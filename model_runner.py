@@ -134,7 +134,7 @@ class runner:
         epoch_total_samples = 0
         
         # tqdm gives a nice status bar to show the epoch progress
-        with tqdm(train_batch_iterator, f"Epoch {self._epoch + 1}", position=0, leave=True, unit="batches") as tepoch:
+        with tqdm(train_batch_iterator, f"Training Epoch {self._epoch + 1}", position=0, leave=True, unit="batches") as tepoch:
             for x_batch, y_batch in tepoch:
                 # Batch train
                 batch_loss, batch_accurate_predictions, batch_samples = self._train_batch(x_batch, y_batch)
@@ -146,7 +146,7 @@ class runner:
                 epoch_total_samples += batch_samples
                 
                 # Update status bar to show current stats
-                tepoch.set_postfix({"batch loss": f"{batch_loss:.3f}", "epoch train accuracy": f"{epoch_train_accuracy * 100:.1f}%"}, refresh=False)
+                tepoch.set_postfix({"batch loss": f"{batch_loss:.3f}", "epoch train accuracy": f"{epoch_train_accuracy * 100:.2f}%"}, refresh=False)
         
         # Update the epoch counter
         self._epoch += 1
@@ -172,11 +172,13 @@ class runner:
             # If the current model is the most accurate one, save it to the disk, even if the
             # autosave interval hasn't been reached yet
             if most_accurate_model_epoch == self._epoch:
+                print(f"This epoch was the most accurate so far: validation accuracy = {np.max(self._val_acc_history) * 100:.2f}%. Saving model state...")
                 self._save_training_state(self._model_name + runner.file_name_suffix_best, overwrite=True)
             
             # Save the latest runner state, if the autosave interval has been reached
             epochs_since_starting_training = self._epoch - starting_epoch
             if epochs_since_starting_training % autosave_interval_epochs == (autosave_interval_epochs - 1):
+                print("Reached epoch save interval, saving model state...")
                 self._save_training_state(self._model_name + runner.file_name_suffix_latest, overwrite=True)
 
 
@@ -194,10 +196,11 @@ class runner:
         total_samples = 0
         correct_samples = 0
         
-        for batched_x, batched_y in iter(batch_iterator):
-            batched_y_hat = self.predict_batch(batched_x)
-            correct_samples += accuracy_score(runner.quantize_classifier_predictions(batched_y), runner.quantize_classifier_predictions(batched_y_hat))
-            total_samples += batched_y.shape[0]
+        with tqdm(batch_iterator, desc="Evaluating model accuracy", position=0, leave=True, unit="batches") as tqdm_batch_iterator:
+            for batched_x, batched_y in iter(tqdm_batch_iterator):
+                batched_y_hat = self.predict_batch(batched_x)
+                correct_samples += accuracy_score(runner.quantize_classifier_predictions(batched_y), runner.quantize_classifier_predictions(batched_y_hat))
+                total_samples += batched_y.shape[0]
         
         average_accuracy_score = correct_samples / total_samples
         return average_accuracy_score
