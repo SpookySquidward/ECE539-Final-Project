@@ -119,7 +119,7 @@ class runner:
         # Number of samples which were trained upon
         num_samples = y_batch.shape[0]
         # Accurate predictions from those samples
-        num_accurate_predictions = accuracy_score(y_batch, runner.quantize_classifier_predictions(yhat))
+        num_accurate_predictions = accuracy_score(runner.quantize_classifier_predictions(y_batch), runner.quantize_classifier_predictions(yhat))
         # Return training stats
         return (loss.item(), num_accurate_predictions, num_samples)
     
@@ -142,7 +142,7 @@ class runner:
                 # Update statistics
                 epoch_total_loss += batch_loss * batch_samples
                 epoch_total_accurate_predictions += batch_accurate_predictions
-                epoch_train_accuracy = epoch_total_accurate_predictions / epoch_total_samples
+                epoch_train_accuracy = epoch_total_accurate_predictions / epoch_total_samples if epoch_total_samples > 0 else 0
                 epoch_total_samples += batch_samples
                 
                 # Update status bar to show current stats
@@ -187,7 +187,7 @@ class runner:
     
     
     def quantize_classifier_predictions(batched_predictions: Tensor) -> Tensor:
-        return np.argmax(batched_predictions, axis=1)
+        return torch.argmax(batched_predictions, axis=1)
     
     
     def classifier_accuracy_score(self, batch_iterator: Iterator[Tuple[Any, Tensor]]) -> float:
@@ -196,7 +196,7 @@ class runner:
         
         for batched_x, batched_y in iter(batch_iterator):
             batched_y_hat = self.predict_batch(batched_x)
-            correct_samples += accuracy_score(batched_y, runner.quantize_classifier_predictions(batched_y_hat))
+            correct_samples += accuracy_score(runner.quantize_classifier_predictions(batched_y), runner.quantize_classifier_predictions(batched_y_hat))
             total_samples += batched_y.shape[0]
         
         average_accuracy_score = correct_samples / total_samples
