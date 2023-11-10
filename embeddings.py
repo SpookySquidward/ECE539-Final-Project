@@ -77,7 +77,7 @@ class review_embedder:
             return np.empty([0, self._embedding_vector_length + oov_feature])
         
     
-    def embed_review_features(self, review: dataset.review, oov_feature = True, title_body_feature = True) -> torch.Tensor:
+    def embed_review_features(self, review: dataset.review, oov_feature = True, title_body_feature = True, dtype=torch.float32) -> torch.Tensor:
         # Embed the title and the body
         title_embedding = self._embed_text_tensor(review.title, oov_feature)
         body_embedding = self._embed_text_tensor(review.body, oov_feature)
@@ -93,7 +93,7 @@ class review_embedder:
         review_feature_embedding = np.concatenate([title_embedding, body_embedding], axis=0)
         
         # Cast to tensor
-        review_feature_embedding = torch.from_numpy(review_feature_embedding)
+        review_feature_embedding = torch.from_numpy(review_feature_embedding).type(dtype)
         
         # Return the embedded review features
         return review_feature_embedding
