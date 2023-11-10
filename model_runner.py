@@ -146,7 +146,7 @@ class runner:
                 epoch_total_samples += batch_samples
                 
                 # Update status bar to show current stats
-                tepoch.set_postfix({"batch loss": f"{batch_loss:.3f}", "epoch train accuracy": f"{epoch_train_accuracy * 100:.1f}%"})
+                tepoch.set_postfix({"batch loss": f"{batch_loss:.3f}", "epoch train accuracy": f"{epoch_train_accuracy * 100:.1f}%"}, refresh=False)
         
         # Update the epoch counter
         self._epoch += 1
