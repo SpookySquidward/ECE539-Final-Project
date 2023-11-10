@@ -177,7 +177,7 @@ class runner:
             
             # Save the latest runner state, if the autosave interval has been reached
             epochs_since_starting_training = self._epoch - starting_epoch
-            if epochs_since_starting_training % autosave_interval_epochs == (autosave_interval_epochs - 1):
+            if epochs_since_starting_training % autosave_interval_epochs == 0 or epochs_since_starting_training == num_epochs:
                 print("Reached epoch save interval, saving model state...")
                 self._save_training_state(self._model_name + runner.file_name_suffix_latest, overwrite=True)
 
