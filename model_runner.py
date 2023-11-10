@@ -134,7 +134,7 @@ class runner:
         epoch_total_samples = 0
         
         # tqdm gives a nice status bar to show the epoch progress
-        with tqdm(train_batch_iterator, f"Epoch {self._epoch + 1}", position=0, leave=True) as tepoch:
+        with tqdm(train_batch_iterator, f"Epoch {self._epoch + 1}", position=0, leave=True, unit="batches") as tepoch:
             for x_batch, y_batch in tepoch:
                 # Batch train
                 batch_loss, batch_accurate_predictions, batch_samples = self._train_batch(x_batch, y_batch)

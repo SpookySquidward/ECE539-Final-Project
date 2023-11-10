@@ -115,7 +115,7 @@ class review_embedder:
         embedded_features = []
         one_hot_labels = []
         
-        with tqdm(reviews, "Embedding features", position=0, leave=True) as treviews:
+        with tqdm(reviews, "Embedding features", position=1, unit="reviews", leave=False) as treviews:
             for review in treviews:
                 features = self.embed_review_features(review, oov_feature, title_body_feature)
                 embedded_features.append(features)
