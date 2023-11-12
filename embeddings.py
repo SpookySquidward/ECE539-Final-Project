@@ -18,7 +18,7 @@ import gensim.downloader
 
 class review_embedder:
     def __init__(self, embedding_model: str = None) -> None:
-        self._embedding_model = None
+        self._embedding_model = embedding_model
         self._embedding_vector_length = None
         
         if embedding_model:
