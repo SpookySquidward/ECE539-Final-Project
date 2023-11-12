@@ -25,12 +25,23 @@ class runner:
     file_name_suffix_best = "_best"
     
     
-    def __init__(self, model_name: str, model: nn.Module, optimizer: torch.optim.Optimizer, loss_fn: torch.nn.modules.loss._Loss):
+    def __init__(self, model_name: str, model: nn.Module, optimizer: torch.optim.Optimizer, loss_fn: torch.nn.modules.loss._Loss, device: str = None):
+        # Model name is used to save checkpoints
         self._model_name = model_name
+        
+        # Training parameters
         self._model = model
         self._optimizer = optimizer
         self._loss_fn = loss_fn
         
+        # Assign a training device automatically if not specified
+        if not device:
+            device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self._device = device
+        # Move the model to the target device
+        self._model.to(self._device)
+        
+        # Load any existing checkpoints
         self._load_training_state(model_name + runner.file_name_suffix_latest)
     
     
@@ -102,6 +113,10 @@ class runner:
         
     
     def _train_batch(self, x_batch: Any, y_batch: Tensor) -> Tuple[float, int, int]:
+        # Move batch data to the target device
+        x_batch = x_batch.to(self._device)
+        y_batch = y_batch.to(self._device)
+        
         # Reset gradients
         self._optimizer.zero_grad()
         
@@ -158,7 +173,9 @@ class runner:
                 
     
     def train(self, train_batch_iterator: Iterator[Tuple[Any, Tensor]], val_batch_iterator: Iterator[Tuple[Any, Tensor]], num_epochs: int, autosave_interval_epochs: int = 1):
+        # Track epochs of training
         starting_epoch = self._epoch
+        
         for epoch in range(num_epochs):
             # Train the epoch
             self._train_epoch(train_batch_iterator)
@@ -184,12 +201,13 @@ class runner:
 
     def predict_batch(self, batched_x: Any) -> Tensor:
         with torch.no_grad():
+            batched_x = batched_x.to(self._device)
             y_hat = self._model.forward(batched_x)
             return y_hat
     
     
     def quantize_classifier_predictions(batched_predictions: Tensor) -> Tensor:
-        return torch.argmax(batched_predictions, axis=1)
+        return torch.argmax(batched_predictions, axis=1).cpu()
     
     
     def classifier_accuracy_score(self, batch_iterator: Iterator[Tuple[Any, Tensor]]) -> float:
