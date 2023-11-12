@@ -134,7 +134,7 @@ class runner:
         # Number of samples which were trained upon
         num_samples = y_batch.shape[0]
         # Accurate predictions from those samples
-        num_accurate_predictions = accuracy_score(runner.quantize_classifier_predictions(y_batch), runner.quantize_classifier_predictions(yhat))
+        num_accurate_predictions = accuracy_score(runner.quantize_classifier_predictions(y_batch), runner.quantize_classifier_predictions(yhat), normalize=False)
         # Return training stats
         return (loss.item(), num_accurate_predictions, num_samples)
     
@@ -217,7 +217,7 @@ class runner:
         with tqdm(batch_iterator, desc="Evaluating model accuracy", position=0, leave=True, unit="batches") as tqdm_batch_iterator:
             for batched_x, batched_y in iter(tqdm_batch_iterator):
                 batched_y_hat = self.predict_batch(batched_x)
-                correct_samples += accuracy_score(runner.quantize_classifier_predictions(batched_y), runner.quantize_classifier_predictions(batched_y_hat))
+                correct_samples += accuracy_score(runner.quantize_classifier_predictions(batched_y), runner.quantize_classifier_predictions(batched_y_hat), normalize=False)
                 total_samples += batched_y.shape[0]
         
         average_accuracy_score = correct_samples / total_samples
