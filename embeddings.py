@@ -5,6 +5,7 @@ import os
 import typing
 from tqdm import tqdm
 from random import shuffle
+from math import ceil
 
 # Set up environment variables so that embedding models downloaded from the internet are
 # cached locally in the ./embedding_models folder; see:
@@ -169,7 +170,7 @@ class embedded_review_random_sampler(typing.Iterable):
         return sample_features, sample_label
         
 
-class review_embedder_sampler(typing.Iterable):
+class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.Tensor]]):
     def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, review_label_mapping: dict[str, torch.Tensor], oov_feature = True, title_body_feature = True, chunk_size: int = 5000):
         # Store parameters
         self._reviews = reviews
@@ -235,39 +236,54 @@ class review_embedder_sampler(typing.Iterable):
         return sample_feature, sample_label
 
 
-# TODO this sampler could make repeated calls from an embedded_review_random_sampler to construct
-# torch.nn.utils.rnn.PackedSequence feature objects; see:
-# https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html#torch.nn.LSTM
-# https://pytorch.org/docs/stable/generated/torch.nn.utils.rnn.pack_sequence.html#torch.nn.utils.rnn.pack_sequence
-# Note: the existing implementation is not functional!
+class batched_review_embedder_sampler(typing.Iterable[typing.Tuple[torch.nn.utils.rnn.PackedSequence, torch.Tensor]]):
+    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, review_label_mapping: dict[str, torch.Tensor], batch_size: int = 100, oov_feature = True, title_body_feature = True, chunk_size: int = 5000):
+        # Initialize the actual embedder
+        self._sampler = review_embedder_sampler(reviews, embedder, review_label_mapping, oov_feature, title_body_feature, chunk_size)
+        
+        # Store parameter
+        self._batch_size = batch_size
 
-# class embedded_review_random_batch_sampler(typing.Iterable):
-#     def __init__(self, data: list[typing.Tuple[torch.Tensor, typing.Any]], batch_size: int) -> None:
-#         self.data = data
-#         self.batch_size = batch_size
+
+    def __len__(self) -> int:
+        return ceil(len(self._sampler) / self._batch_size)
     
     
-#     def __iter__(self) -> typing.Iterator[list[typing.Tuple[torch.Tensor, typing.Any]]]:
-#         # Shuffle the data and prepare to read a new epoch
-#         random.shuffle(self.data)
-#         self.read_location_current_batch = 0
-#         return self
+    def __iter__(self) -> typing.Iterator[typing.Tuple[torch.nn.utils.rnn.PackedSequence, torch.Tensor]]:
+        # Reset the sampler
+        iter(self._sampler)
+        
+        return self
     
     
-#     def __next__(self) -> typing.Tuple[torch.nn.utils.rnn.PackedSequence[torch.Tensor], torch.Tensor]:
-#         # End iteration if all data has been read
-#         if self.read_location_current_batch >= len(self.data):
-#             raise StopIteration
+    def __next__(self) -> typing.Tuple[torch.nn.utils.rnn.PackedSequence, torch.Tensor]:
+        # Fetch batch_size samples
+        batch_samples = []
+        for sample_i in range(self._batch_size):
+            try:
+                # Fetch one sample
+                batch_samples.append(next(self._sampler))
+                
+            except StopIteration:
+                # Out of samples! Finish the current batch if there are any samples in it, or exit if not
+                if len(batch_samples) > 0:
+                    break
+                else:
+                    raise StopIteration
         
-#         # Read a batch of data
-#         batch_data = self.data[self.read_location_current_batch : self.read_location_current_batch + self.batch_size]
-#         batch_data.sort(key=(lambda x : x[0].shape[0]), reverse=True)
+        # In order to pack the samples into a PackedSequence, they first need to be sorted by length; see:
+        # https://pytorch.org/docs/stable/generated/torch.nn.utils.rnn.pack_sequence.html#torch.nn.utils.rnn.pack_sequence
+        batch_samples.sort(key = (lambda sample: sample[0].shape[0]), reverse=True)
         
-#         # Update the read position
-#         self.read_location_current_batch += self.batch_size
+        # Unzip the samples into feature and label lists
+        batch_features = list(sample[0] for sample in batch_samples)
+        batch_labels = list(sample[1] for sample in batch_samples)
         
-#         # Split the data into feature and label lists
-#         batch_data_features = list(data[0] for data in batch_data)
-#         batch_data_labels = ...
+        # Pack the features
+        batch_features_packed = torch.nn.utils.rnn.pack_sequence(batch_features)
         
-#         return batch_data
+        # And stack the labels
+        batch_labels_stacked = torch.concatenate(batch_labels, dim=0)
+        
+        return batch_features_packed, batch_labels_stacked
+        
