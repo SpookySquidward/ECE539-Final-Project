@@ -39,20 +39,19 @@ from matplotlib import cm
 plt.style.use('ggplot')
 
 def mlp_data(train_path: Path):
-    train_data = pd.read_csv(filepath_or_buffer=train_path, names=["rating", "title", "body"])
+    train_data = pd.read_csv(filepath_or_buffer=train_path, names=["sentiment", "title", "body"])
     
-    labels, texts = [], []
-    for i, line in enumerate(train_data.split("\n")):
-        content = line.split()
-        labels.append(content[0])
-        texts.append(" ".join(content[1:]))
+    sns.countplot(train_data['sentiment'])
+
+    return train_data
+
 
 
 def main():
     # parent directory
     project_root = Path(__file__).parent.parent
-    raw_train_path = project_root.joinpath("dataset", "formatted_train.csv")
-    raw_test_path = project_root.joinpath("dataset", "formatted_test.csv")
+    raw_train_path = project_root.joinpath("dataset", "1formatted_train.csv")
+    raw_test_path = project_root.joinpath("dataset", "1formatted_test.csv")
 
     # Reformat data
     mlp_train = mlp_data(raw_train_path)
@@ -63,7 +62,7 @@ def main():
     # Check sizes
     print("--> Running mlp_data")
     rows, columns = mlp_train.shape
-    print("\nDataframe shape for train\nExpected rows: 2400000", "\nActual rows: ", rows)
+    print("\nDataframe shape for train\nrows: ", rows)
 
 
 
