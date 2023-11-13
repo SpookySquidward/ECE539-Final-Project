@@ -118,7 +118,11 @@ class review_embedder:
         with tqdm(reviews, "Embedding features", position=1, unit="reviews", leave=False) as treviews:
             for review in treviews:
                 features = self.embed_review_features(review, oov_feature, title_body_feature)
-                embedded_features.append(features)
+                
+                # Some reviews have no alpha title or body, which models don't like; if one of
+                # these is found, skip it!
+                if features.shape[0] == 0:
+                    continue
                 
                 # Label mapping needs to be reshaped to have an extra dimension to emulate a batch size of 1
                 one_hot_label = review_label_mapping[review.label].reshape([1, -1])
