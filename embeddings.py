@@ -6,6 +6,7 @@ import typing
 from tqdm import tqdm
 from random import shuffle
 from math import ceil
+import multiprocessing as mp
 
 # Set up environment variables so that embedding models downloaded from the internet are
 # cached locally in the ./embedding_models folder; see:
@@ -17,12 +18,16 @@ import gensim.downloader
 
 
 class review_embedder:
-    def __init__(self, embedding_model: str = None) -> None:
+    def __init__(self, embedding_model: str = None, embedding_threads: int = None) -> None:
         self._embedding_model = embedding_model
         self._embedding_vector_length = None
         
+        # Load the embedding model, if specified
         if embedding_model:
             self.load_embedding_model(embedding_model)
+            
+        # Initialize the thread pool for review embedding
+        self.initialize_thread_pool()
         
         
     def load_embedding_model(self, embedding_model: str) -> None:
@@ -40,14 +45,25 @@ class review_embedder:
         self._embedding_vector_length = self._embedding_model[0].shape[0]
     
     
+    def initialize_thread_pool(self, num_threads: int = None) -> None:
+        # If the number of threads to be used is not specified, default to all CPU threads minus
+        # one (for the main thread)
+        if not num_threads:
+            num_cpus = os.cpu_count()
+            num_threads = num_cpus - 1 if num_cpus else 1
+        
+        # Create the embedding thread pool
+        self._embedding_thread_pool = mp.Pool(processes = num_threads)
+    
+    
     def _split_text(text: str) -> typing.Iterable[str]:
         return gensim.utils.tokenize(text, lowercase=True, deacc=True)
     
     
-    def _embed_text_vectors(self, text: str, oov_feature = True) -> typing.Iterable[np.ndarray]:
+    def _embed_text_vectors(text: str, embedding_model: typing.Any, embedding_vector_length: int, oov_feature = True) -> typing.Iterable[np.ndarray]:
         # Empty input check
         if (not text) or (len(text) == 0):
-            return np.empty([0, self._embedding_vector_length + oov_feature])
+            return np.empty([0, embedding_vector_length + oov_feature])
         
         for word in review_embedder._split_text(text):
             # oov_feature is True, add an extra feature to in-vocab data and return a one-hot oov
@@ -55,33 +71,36 @@ class review_embedder:
             if oov_feature:
                 try:
                     # Add a zero out-of-vocab flag if the embedding could be found
-                    yield np.concatenate([self._embedding_model[word], np.zeros(1)], axis=0).reshape([1, -1])
+                    yield np.concatenate([embedding_model[word], np.zeros(1)], axis=0).reshape([1, -1])
                 except KeyError:
                     # Add a one out-of-vocab flag if the embedding couldn't be found
-                    yield np.concatenate([np.zeros(self._embedding_vector_length), np.ones(1)], axis=0).reshape([1, -1])
+                    yield np.concatenate([np.zeros(embedding_vector_length), np.ones(1)], axis=0).reshape([1, -1])
             
             # oov_feature is False, simply skip over any out-of-vocab data; no need to concatenate
             # another feature dimension.
             else:
                 try:
-                    yield self._embedding_model[word].reshape([1, -1])
+                    yield embedding_model[word].reshape([1, -1])
                 except KeyError:
                     continue
     
     
-    def _embed_text_tensor(self, text: str, oov_feature = True) -> np.ndarray:
-        embedded_text = list(self._embed_text_vectors(text, oov_feature))
+    def _embed_text_tensor(text: str, embedding_model: typing.Any, embedding_vector_length: int, oov_feature = True) -> np.ndarray:
+        # embedded_text = list(self._embed_text_vectors(text, oov_feature))
+        embedded_text = list(review_embedder._embed_text_vectors(text, embedding_model, embedding_vector_length, oov_feature))
         if len(embedded_text) > 0:
             return  np.concatenate(embedded_text, axis=0)
         else:
             # Blank or non-alpha text, return an empty tensor
-            return np.empty([0, self._embedding_vector_length + oov_feature])
+            return np.empty([0, embedding_vector_length + oov_feature])
         
     
-    def embed_review_features(self, review: dataset.review, oov_feature = True, title_body_feature = True, dtype=torch.float32) -> torch.Tensor:
+    def embed_review_features(review: dataset.review, embedding_model: typing.Any, embedding_vector_length: int, output_queue: mp.Queue, oov_feature = True, title_body_feature = True, dtype=torch.float32) -> torch.Tensor:
         # Embed the title and the body
-        title_embedding = self._embed_text_tensor(review.title, oov_feature)
-        body_embedding = self._embed_text_tensor(review.body, oov_feature)
+        # title_embedding = self._embed_text_tensor(review.title, oov_feature)
+        # body_embedding = self._embed_text_tensor(review.body, oov_feature)
+        title_embedding = review_embedder._embed_text_tensor(review.title, embedding_model, embedding_vector_length, oov_feature)
+        body_embedding = review_embedder._embed_text_tensor(review.body, embedding_model, embedding_vector_length, oov_feature)
         
         # Add an extra feature to denote title vs. body, if desired
         if title_body_feature:
@@ -99,10 +118,26 @@ class review_embedder:
         # Return the embedded review features
         return review_feature_embedding
     
+    
+    def embed_review_features_and_labels(review: dataset.review, embedding_model: typing.Any, embedding_vector_length: int, review_label_mapping: dict[str, torch.Tensor], output_queue: mp.Queue, oov_feature = True, title_body_feature = True, feature_dtype=torch.float32) -> typing.Tuple[torch.tensor, torch.tensor]:
+        features = review_embedder.embed_review_features(review=review,
+                                                                    embedding_model=embedding_model,
+                                                                    embedding_vector_length=embedding_vector_length,
+                                                                    output_queue=output_queue,
+                                                                    oov_feature=oov_feature,
+                                                                    title_body_feature=title_body_feature,
+                                                                    dtype=feature_dtype)
+        
+        # Label mapping needs to be reshaped to have an extra dimension to emulate a batch size of 1
+        # TODO
+        one_hot_label = review_label_mapping[review.label].reshape([1, -1])
+        
+        return (features, one_hot_label)
+    
 
     def embed_dataset_features_and_labels(self, reviews: typing.Iterable[dataset.review],
                                           review_label_mapping: dict[str, torch.Tensor],
-                                          oov_feature = True, title_body_feature = True) -> typing.Tuple[list[torch.tensor], list[torch.tensor]]:
+                                          oov_feature = True, title_body_feature = True) -> list[typing.Tuple[torch.tensor, torch.tensor]]:
         
         # Verify the mappings are all the same shape
         mapping_keys = review_label_mapping.keys()
@@ -113,19 +148,33 @@ class review_embedder:
             raise ValueError(f"Torch RuntimeError {E}; make sure that all tensors in the review_label_mapping dict have the same shape!")
         
         
-        embedded_features = []
-        one_hot_labels = []
+        # A queue will hold all the reviews once they have been embedded
+        # embedded_queue = mp.Queue()
+        # TODO
+        embedded_queue = None
         
-        with tqdm(reviews, "Embedding features", position=1, unit="reviews", leave=False) as treviews:
-            for review in treviews:
-                features = self.embed_review_features(review, oov_feature, title_body_feature)
-                embedded_features.append(features)
-                
-                # Label mapping needs to be reshaped to have an extra dimension to emulate a batch size of 1
-                one_hot_label = review_label_mapping[review.label].reshape([1, -1])
-                one_hot_labels.append(one_hot_label)
+        # The thread pool defined below's map() function takes a callback with only one parameter,
+        # so we define a wrapper function for embed_review_features_and_labels with all parameters
+        # defined except for `review`
+        # def embed(review: dataset.review):
+        #     return review_embedder.embed_review_features_and_labels(
+        #         review=review,
+        #         embedding_model=self._embedding_model,
+        #         embedding_vector_length=self._embedding_vector_length,
+        #         review_label_mapping=review_label_mapping,
+        #         output_queue=embedded_queue,
+        #         oov_feature=oov_feature,
+        #         title_body_feature=title_body_feature,
+        #     )
+            
+        embedding_args = [(review, self._embedding_model, self._embedding_vector_length, review_label_mapping, embedded_queue, oov_feature, title_body_feature) for review in reviews]
         
-        return embedded_features, one_hot_labels
+        # Embed all the reviews' features and labels
+        print(f"Embedding {len(reviews)} reviews...")
+        embedded_reviews = self._embedding_thread_pool.starmap(review_embedder.embed_review_features_and_labels, embedding_args, chunksize=1000)
+        print(f"Finished embedding")
+        
+        return embedded_reviews
             
 
 class embedded_review_random_sampler(typing.Iterable):
@@ -171,7 +220,7 @@ class embedded_review_random_sampler(typing.Iterable):
         
 
 class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.Tensor]]):
-    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, review_label_mapping: dict[str, torch.Tensor], oov_feature = True, title_body_feature = True, chunk_size: int = 5000):
+    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, review_label_mapping: dict[str, torch.Tensor], oov_feature = True, title_body_feature = True, chunk_size: int = 10000):
         # Store parameters
         self._reviews = reviews
         self._embedder = embedder
@@ -205,9 +254,8 @@ class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.T
         
         # Fetch the next chunk of data
         next_chunk_reviews = self._reviews[self._review_read_location : self._review_read_location + self._chunk_size]
-        next_chunk_features, next_chunk_labels = self._embedder.embed_dataset_features_and_labels(next_chunk_reviews, self._review_label_mapping, self._oov_feature, self._title_body_feature)
-        self._current_chunk_features = next_chunk_features
-        self._current_chunk_labels = next_chunk_labels
+        next_chunk_embedded_reviews = self._embedder.embed_dataset_features_and_labels(next_chunk_reviews, self._review_label_mapping, self._oov_feature, self._title_body_feature)
+        self._current_chunk_embedded_reviews = next_chunk_embedded_reviews
         self._chunk_read_location = 0
         
         # Update read location for next load call
@@ -219,25 +267,24 @@ class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.T
     
     def __next__(self) -> typing.Tuple[torch.Tensor, torch.Tensor]:
         # Check to see if another chunk of data needs to be loaded
-        if self._chunk_read_location >= len(self._current_chunk_features):
+        if self._chunk_read_location >= len(self._current_chunk_embedded_reviews):
             chunk_load_success = self._load_next_chunk()
             # Exit if no new reviews were found to embed
             if not chunk_load_success:
                 raise StopIteration
         
         # Get the next sample
-        sample_feature = self._current_chunk_features[self._chunk_read_location]
-        sample_label = self._current_chunk_labels[self._chunk_read_location]
+        embedded_sample = self._current_chunk_embedded_reviews[self._chunk_read_location]
         
         # Update the chunk read position
         self._chunk_read_location += 1
         
         # Return the requested sample
-        return sample_feature, sample_label
+        return embedded_sample
 
 
 class batched_review_embedder_sampler(typing.Iterable[typing.Tuple[torch.nn.utils.rnn.PackedSequence, torch.Tensor]]):
-    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, review_label_mapping: dict[str, torch.Tensor], batch_size: int = 100, oov_feature = True, title_body_feature = True, chunk_size: int = 5000):
+    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, review_label_mapping: dict[str, torch.Tensor], batch_size: int = 100, oov_feature = True, title_body_feature = True, chunk_size: int = 10000):
         # Initialize the actual embedder
         self._sampler = review_embedder_sampler(reviews, embedder, review_label_mapping, oov_feature, title_body_feature, chunk_size)
         
