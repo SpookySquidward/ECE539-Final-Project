@@ -102,7 +102,7 @@ class review_embedder:
 
     def embed_dataset_features_and_labels(self, reviews: typing.Iterable[dataset.review],
                                           review_label_mapping: dict[str, torch.Tensor],
-                                          oov_feature = True, title_body_feature = True) -> typing.Tuple[list[torch.tensor], list[torch.tensor]]:
+                                          oov_feature = True, title_body_feature = True) -> list[typing.Tuple[torch.tensor, torch.tensor]]:
         
         # Verify the mappings are all the same shape
         mapping_keys = review_label_mapping.keys()
@@ -113,8 +113,7 @@ class review_embedder:
             raise ValueError(f"Torch RuntimeError {E}; make sure that all tensors in the review_label_mapping dict have the same shape!")
         
         
-        embedded_features = []
-        one_hot_labels = []
+        embedded_reviews = []
         
         with tqdm(reviews, "Embedding features", position=1, unit="reviews", leave=False) as treviews:
             for review in treviews:
@@ -123,9 +122,10 @@ class review_embedder:
                 
                 # Label mapping needs to be reshaped to have an extra dimension to emulate a batch size of 1
                 one_hot_label = review_label_mapping[review.label].reshape([1, -1])
-                one_hot_labels.append(one_hot_label)
+                
+                embedded_reviews.append((features, one_hot_label))
         
-        return embedded_features, one_hot_labels
+        return embedded_reviews
             
 
 class embedded_review_random_sampler(typing.Iterable):
@@ -205,9 +205,8 @@ class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.T
         
         # Fetch the next chunk of data
         next_chunk_reviews = self._reviews[self._review_read_location : self._review_read_location + self._chunk_size]
-        next_chunk_features, next_chunk_labels = self._embedder.embed_dataset_features_and_labels(next_chunk_reviews, self._review_label_mapping, self._oov_feature, self._title_body_feature)
-        self._current_chunk_features = next_chunk_features
-        self._current_chunk_labels = next_chunk_labels
+        next_chunk_embedded_reviews = self._embedder.embed_dataset_features_and_labels(next_chunk_reviews, self._review_label_mapping, self._oov_feature, self._title_body_feature)
+        self._current_chunk_embedded_reviews = next_chunk_embedded_reviews
         self._chunk_read_location = 0
         
         # Update read location for next load call
@@ -219,21 +218,20 @@ class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.T
     
     def __next__(self) -> typing.Tuple[torch.Tensor, torch.Tensor]:
         # Check to see if another chunk of data needs to be loaded
-        if self._chunk_read_location >= len(self._current_chunk_features):
+        if self._chunk_read_location >= len(self._current_chunk_embedded_reviews):
             chunk_load_success = self._load_next_chunk()
             # Exit if no new reviews were found to embed
             if not chunk_load_success:
                 raise StopIteration
         
         # Get the next sample
-        sample_feature = self._current_chunk_features[self._chunk_read_location]
-        sample_label = self._current_chunk_labels[self._chunk_read_location]
+        sample = self._current_chunk_embedded_reviews[self._chunk_read_location]
         
         # Update the chunk read position
         self._chunk_read_location += 1
         
         # Return the requested sample
-        return sample_feature, sample_label
+        return sample
 
 
 class batched_review_embedder_sampler(typing.Iterable[typing.Tuple[torch.nn.utils.rnn.PackedSequence, torch.Tensor]]):
