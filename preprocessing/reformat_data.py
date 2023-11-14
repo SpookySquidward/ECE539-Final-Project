@@ -1,5 +1,6 @@
 import pandas as pd
 from pathlib import Path  # https://realpython.com/python-pathlib/
+from csv import QUOTE_ALL
 
 
 def snap_reviews(rating: int):
@@ -48,8 +49,8 @@ def main():
     formatted_test = format_data(test_path)
 
     # Write to csv
-    formatted_train.to_csv(path_or_buf=project_root.joinpath("dataset", "formatted_train.csv"), index=False)
-    formatted_test.to_csv(path_or_buf=project_root.joinpath("dataset", "formatted_test.csv"), index=False)
+    formatted_train.to_csv(path_or_buf=project_root.joinpath("dataset", "formatted_train.csv"), index=False, quoting=QUOTE_ALL)
+    formatted_test.to_csv(path_or_buf=project_root.joinpath("dataset", "formatted_test.csv"), index=False, quoting=QUOTE_ALL)
 
     # Check sizes
     rows, columns = formatted_train.shape

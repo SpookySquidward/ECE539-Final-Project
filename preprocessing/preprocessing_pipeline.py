@@ -2,6 +2,7 @@ from pathlib import Path
 import pandas as pd
 from reformat_data import format_data
 from train_val_split import split_in_train_and_validation
+from csv import QUOTE_ALL
 
 
 def run_preprocessing_pipeline(train_path: Path, test_path: Path, intermediate_csvs = False) -> None:
@@ -19,8 +20,9 @@ def run_preprocessing_pipeline(train_path: Path, test_path: Path, intermediate_c
         # Write to csv
         project_root = Path(__file__).parent.parent
         formatted_train_path = project_root.joinpath("dataset", "formatted_train.csv")
-        formatted_train.to_csv(formatted_train_path, index=False)
-        formatted_test.to_csv(project_root.joinpath("dataset", "formatted_test.csv"), index=False)
+        formatted_test_path = project_root.joinpath("dataset", "formatted_test.csv")
+        formatted_train.to_csv(formatted_train_path, index=False, quoting=QUOTE_ALL)
+        formatted_test.to_csv(formatted_test_path, index=False, quoting=QUOTE_ALL)
 
         split_in_train_and_validation(formatted_train_path, 0.2)
     else:
