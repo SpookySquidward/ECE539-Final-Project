@@ -2,7 +2,6 @@ from pathlib import Path
 from reformat_data import format_data
 from train_val_split import split_in_train_and_validation
 
-
 def run_preprocessing_pipeline(project_root: Path, train_path: Path, test_path: Path) -> None:
     """
     Run all preprocessing - this functions uses dataframes as intermediate representation.

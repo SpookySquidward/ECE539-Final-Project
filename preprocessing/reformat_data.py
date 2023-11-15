@@ -1,6 +1,5 @@
 import pandas as pd
-from pathlib import Path
-import os
+from pathlib import Path  # https://realpython.com/python-pathlib/
 
 
 def snap_reviews(rating: int):
@@ -58,7 +57,6 @@ def main():
     print("\nDataframe shape for train\nExpected rows: 2400000", "\nActual rows: ", rows)
     rows, columns = formatted_test.shape
     print("\nDataframe shape for test\nExpected rows: 520000", "\nActual rows: ", rows)
-
 
 
 if __name__ == "__main__":

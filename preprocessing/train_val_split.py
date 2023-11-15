@@ -12,7 +12,7 @@ def split_in_train_and_validation(train_data: Path | pd.DataFrame, validation_si
 
     if isinstance(train_data, Path):
         train_data = pd.read_csv(train_data)
-
+        
     og_rows = train_data.shape[0]
     train_df, val_df = train_test_split(train_data, train_size=1 - validation_size, random_state=11)
 
