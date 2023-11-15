@@ -81,11 +81,12 @@ class csv_reader:
         self._read_location = 0
     
     
-    def open_csv(self, csv_path: str) -> None:
+    def open_csv(self, csv_path: str, skip_header: bool = False) -> None:
         """Reads a csv file's contents
 
         Args:
             csv_path (str): The path to the csv file to read
+            skip_header (bool): If True, skips the first line of the specified CSV (the header). Defaults to False.
 
         Raises:
             ValueError: if an invalid csv_path was specified
@@ -101,6 +102,13 @@ class csv_reader:
         # Read the file
         with open(csv_path, encoding=csv_encoding) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=csv_delimiter, quotechar=csv_quotechar, doublequote=csv_doublequote)
+            
+            # Skip the first line if it is a header
+            if skip_header:
+                try:
+                    next(csv_reader)
+                except StopIteration:
+                    return
             
             for line_i, line_items in enumerate(csv_reader):
                 # Ignore blank lines
