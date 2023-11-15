@@ -38,24 +38,25 @@ def format_data(path: Path):
 
 
 def main():
-    # First parent is ...\ECE539-Final-Project\preprocessing, second is project root
+    # parent directory
     project_root = Path(__file__).parent.parent
-    train_path = project_root.joinpath("dataset", "train.csv")
-    test_path = project_root.joinpath("dataset", "test.csv")
+    raw_train_path = project_root.joinpath("dataset", "train.csv")
+    raw_test_path = project_root.joinpath("dataset", "test.csv")
 
     # Reformat data
-    formatted_train = format_data(train_path)
-    formatted_test = format_data(test_path)
+    formatted_train = format_data(raw_train_path)
+    formatted_test = format_data(raw_test_path)
 
     # Write to csv
-    formatted_train.to_csv(path_or_buf=project_root.joinpath("dataset", "formatted_train.csv"), index=False)
-    formatted_test.to_csv(path_or_buf=project_root.joinpath("dataset", "formatted_test.csv"), index=False)
+    formatted_test.to_csv(project_root.joinpath("dataset", "formatted_test.csv"), index=False)
+    formatted_train.to_csv(project_root.joinpath("dataset", "formatted_train.csv"), index=False)
 
     # Check sizes
+    print("--> Running format_data")
     rows, columns = formatted_train.shape
     print("\nDataframe shape for train\nExpected rows: 2400000", "\nActual rows: ", rows)
     rows, columns = formatted_test.shape
-    print("Dataframe shape for test\nExpected rows: 520000", "\nActual rows: ", rows)
+    print("\nDataframe shape for test\nExpected rows: 520000", "\nActual rows: ", rows)
 
 
 if __name__ == "__main__":

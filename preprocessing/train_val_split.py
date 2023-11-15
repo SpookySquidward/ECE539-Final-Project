@@ -12,13 +12,21 @@ def split_in_train_and_validation(train_data: Path | pd.DataFrame, validation_si
 
     if isinstance(train_data, Path):
         train_data = pd.read_csv(train_data)
-
+        
+    og_rows = train_data.shape[0]
     train_df, val_df = train_test_split(train_data, train_size=1 - validation_size, random_state=11)
+
+    # Check sizes
+    print("\n--> Running split_in_train_and_validation")
+    rows, columns = train_df.shape
+    print(f'Dataframe shape for train\nExpected rows: {og_rows * (1-validation_size)}', '\nActual rows: ', rows)
+    rows, columns = val_df.shape
+    print(f'\nDataframe shape for validation\nExpected rows: {og_rows * validation_size}', '\nActual rows: ', rows)
 
     # Save as CSV files - could be made to overwrite formatted train
     project_root = Path(__file__).parent.parent
-    train_df.to_csv(project_root.joinpath("dataset", "1formatted_train.csv"), index=False)
-    val_df.to_csv(project_root.joinpath("dataset", "1formatted_val.csv"), index=False)
+    train_df.to_csv(project_root.joinpath("dataset", "formatted_train.csv"), index=False)
+    val_df.to_csv(project_root.joinpath("dataset", "formatted_val.csv"), index=False)
 
 
 def main():
