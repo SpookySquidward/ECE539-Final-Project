@@ -199,10 +199,10 @@ class runner:
                 self._save_training_state(self._model_name + runner.file_name_suffix_latest, overwrite=True)
 
 
-    def predict_batch(self, batched_x: Any) -> Tensor:
+    def predict_batch(self, x_batch: Any) -> Tensor:
         with torch.no_grad():
-            batched_x = batched_x.to(self._device)
-            y_hat = self._model.forward(batched_x)
+            x_batch = x_batch.to(self._device)
+            y_hat = self._model.forward(x_batch)
             return y_hat
     
     
