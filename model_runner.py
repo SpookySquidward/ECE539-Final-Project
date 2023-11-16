@@ -25,7 +25,7 @@ class runner:
     file_name_suffix_best = "_best"
     
     
-    def __init__(self, model_name: str, model: nn.Module, optimizer: torch.optim.Optimizer, loss_fn: torch.nn.modules.loss._Loss, device: str = None):
+    def __init__(self, model_name: str, model: nn.Module, optimizer: torch.optim.Optimizer, loss_fn: nn.modules.loss._Loss, device: str = None) -> None:
         # Model name is used to save checkpoints
         self._model_name = model_name
         
@@ -99,7 +99,7 @@ class runner:
             return False
     
     
-    def _save_training_state(self, file_name: str, overwrite: bool = False) -> float:
+    def _save_training_state(self, file_name: str, overwrite: bool = False) -> bool:
         training_state = {
             runner.param_key_model_state: self._model.state_dict(),
             runner.param_key_optimizer_state: self._optimizer.state_dict(),
@@ -109,7 +109,7 @@ class runner:
             runner.param_key_val_acc_history: self._val_acc_history
         }
         
-        save_load_model_parameters.save_parameters(training_state, file_name, overwrite)
+        return save_load_model_parameters.save_parameters(training_state, file_name, overwrite)
         
     
     def _train_batch(self, x_batch: Any, y_batch: Tensor) -> Tuple[float, int, int]:
@@ -172,7 +172,7 @@ class runner:
         self._train_acc_history.append(epoch_train_accuracy)
                 
     
-    def train(self, train_batch_iterator: Iterator[Tuple[Any, Tensor]], val_batch_iterator: Iterator[Tuple[Any, Tensor]], num_epochs: int, autosave_interval_epochs: int = 1):
+    def train(self, train_batch_iterable: Iterable[Tuple[Any, Tensor]], val_batch_iterable: Iterable[Tuple[Any, Tensor]], num_epochs: int, autosave_interval_epochs: int = 1):
         # Track epochs of training
         starting_epoch = self._epoch
         
@@ -210,7 +210,7 @@ class runner:
         return torch.argmax(batched_predictions, axis=1).cpu()
     
     
-    def classifier_accuracy_score(self, batch_iterator: Iterator[Tuple[Any, Tensor]]) -> float:
+    def classifier_accuracy_score(self, batch_iterable: Iterable[Tuple[Any, Tensor]]) -> float:
         total_samples = 0
         correct_samples = 0
         
