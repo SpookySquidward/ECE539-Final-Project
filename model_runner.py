@@ -10,6 +10,9 @@ import os
 
 
 class runner:
+    """Model runner class which can train a model, evaluate its performance, and save its state and performance history
+    automatically
+    """    
     
     # Training parameters to be saved and recalled
     param_key_model_state = "model_state"
@@ -26,6 +29,24 @@ class runner:
     
     
     def __init__(self, model_name: str, model: nn.Module, optimizer: torch.optim.Optimizer, loss_fn: nn.modules.loss._Loss, device: str = None) -> None:
+        """Initializes the model runner.
+
+        Args:
+            model_name (str): The name of the model to be trained. Note that this name must be unique to a specific
+            model structure, as it is used to determine the file names of save-states written to and read from
+            `./model_parameters` (see `runner._load_training_state`).
+            model (nn.Module): The model to be trained.
+            optimizer (torch.optim.Optimizer): The optimizer used to train the given `model`.
+            loss_fn (nn.modules.loss._Loss): The loss function used to evaluate the `model`'s performance.
+            device (str, optional): The device to train the `model` on, e.g. `cuda` or `cpu`. If None, `cuda` is
+            automatically selected for training, if it is available; otherwise `cpu` is used. Defaults to None.
+
+        Raises:
+            ValueError: If, when the `runner` is initialized, a save-state for `model` or `optimizer` is found in the
+            temporary `./model_parameters` directory which has a matching `model_name` but a mismatching model or
+            optimizer structure. See `runner._load_training_state`.
+        """        
+        
         # Model name is used to save checkpoints
         self._model_name = model_name
         
@@ -46,6 +67,17 @@ class runner:
     
     
     def state_dicts_are_compatible(dict1: dict[str, Any], dict2: dict[str, Any]) -> bool:
+        """Checks to see whether two state dicts appear to be compatible with one another. State dicts are judged as
+        compatible if their keys are identical and their corresponding values are of the same type.
+
+        Args:
+            dict1 (dict[str, Any]): The first state dict to compare.
+            dict2 (dict[str, Any]): The second state dict to compare.
+
+        Returns:
+            bool: True if `dict1` and `dict2` are found to be compatible as described above, otherwise False.
+        """        
+        
         # Check if all the keys are the same
         if dict1.keys() != dict2.keys():
             return False
@@ -60,6 +92,26 @@ class runner:
     
     
     def _load_training_state(self, file_name: str) -> bool:
+        """Updates the `runner`'s model state, optimizer state, current epoch, and histories for train accuracy,
+        validation accuracy, and train loss from the specified `file_name`. If no save file was found with the specified
+        `file_name`, the above `runner`'s model an optimizer parameters remain unchanged, the epoch is initialized to
+        zero, and the accuracy and loss histories are initialized to none.
+
+        Args:
+            file_name (str): The name of the file to load the `runner`'s states from. NOTE: this should be a file name,
+            not a path from the root directory; parameters are automatically saved to the `./model_parameters` folder! A
+            file extension of `.pt` is added automatically if not included in `file_name`. See
+            `save_load_model_parameters.load_parameters`.
+
+        Raises:
+            ValueError: If a runner state is found with the specified `file_name`, but the model or optimizer state(s)
+            contained within are not compatible with the `runner`'s currently-loaded model or optimizer.
+
+        Returns:
+            bool: True if the `runner`'s state was successfully updated from the specified `file_name`, or False if no
+            save state at the specified `file_name` was found and the `runner`'s state was (re)initialized.
+        """        
+        
         training_state = save_load_model_parameters.load_parameters(file_name)
         
         if training_state:
@@ -100,6 +152,24 @@ class runner:
     
     
     def _save_training_state(self, file_name: str, overwrite: bool = False) -> bool:
+        """Saves the `runner`'s model state, optimizer state, current epoch, and histories for train accuracy,
+        validation accuracy, and train loss to the specified `file_name`. If a file with the specified `file_name`
+        already exists and `overwrite` is False, no parameters are saved and False is returned.
+
+        Args:
+            file_name (str): The name of the file to save the `runner`'s states to. NOTE: this should be a file name,
+            not a path from the root directory; parameters are automatically saved to the `./model_parameters` folder! A
+            file extension of `.pt` is added automatically if not included in `file_name`. See
+            `save_load_model_parameters.save_parameters`.
+            overwrite (bool, optional): If True, overwrites any existing `runner` state with a matching `file_name`, if
+            it exists (see `save_load_model_parameters.save_parameters`). Defaults to False.
+
+        Returns:
+            bool: Whether or not the `runner`'s training state was successfully saved to the specified `file_name`.
+            False only if an existing model parameter with a matching `file_name` exists in the `./model_parameters`
+            folder and `overwrite` is set to False (see `save_load_model_parameters.save_parameters`).
+        """        
+        
         training_state = {
             runner.param_key_model_state: self._model.state_dict(),
             runner.param_key_optimizer_state: self._optimizer.state_dict(),
@@ -113,6 +183,19 @@ class runner:
         
     
     def _train_batch(self, x_batch: Any, y_batch: Tensor) -> Tuple[float, int, int]:
+        """Trains the `runner`'s model on one batch of data.
+
+        Args:
+            x_batch (Any): The data to trian the `runner`'s model on. The type must be compatible with the model with
+            which the `runner` was initialized.
+            y_batch (Tensor): The corresponding labels for the specified `x_batch`. Labels must be of the shape
+            `(N,*)`, where `N` is the number of samples in the current batch and `*` is any dimension.
+
+        Returns:
+            Tuple[float, int, int]: Batch training statistics of the form `(batch_loss, batch_num_accurate_predictions,
+            batch_num_samples)`
+        """        
+        
         # Move batch data to the target device
         x_batch = x_batch.to(self._device)
         y_batch = y_batch.to(self._device)
@@ -140,6 +223,17 @@ class runner:
     
     
     def _train_epoch(self, train_batch_iterable: Iterable[Tuple[Any, Tensor]]) -> None:
+        """Trains the `runner`'s model on one epoch of data.
+
+        Args:
+            train_batch_iterable (Iterable[Tuple[Any, Tensor]]): an iterable batch data loader which yields tuples of
+            batch training data of the form `(x_batch, y_batch)`. The `x_batch` and `y_batch` data for each batch must
+            conform to the structure specified in `runner._train_batch`: `x_batch` must be compatible with the model
+            that the `runner` was initialized with, and `y_batch` must be of the shape `(N,*)`, where `N` is the number
+            of samples in the batch and `*` is any dimension.
+        """        
+        
+        
         # Restart the iterator to begin a new epoch
         train_batch_iterator = iter(train_batch_iterable)
         
@@ -173,6 +267,26 @@ class runner:
                 
     
     def train(self, train_batch_iterable: Iterable[Tuple[Any, Tensor]], val_batch_iterable: Iterable[Tuple[Any, Tensor]], num_epochs: int, autosave_interval_epochs: int = 1):
+        """Trains the `runner`'s model using a training and validaiton dataset, and collects statistics about the
+        model's loss, train accuracy, and validation accuracy histories.
+
+        Args:
+            train_batch_iterable (Iterable[Tuple[Any, Tensor]]): an iterable batch data loader which yields tuples of
+            batch training data of the form `(x_batch, y_batch)`. The `x_batch` and `y_batch` data for each batch must
+            conform to the structure specified in `runner._train_batch`: `x_batch` must be compatible with the model
+            that the `runner` was initialized with, and `y_batch` must be of the shape `(N,*)`, where `N` is the number
+            of samples in the batch and `*` is any dimension.
+            val_batch_iterable (Iterable[Tuple[Any, Tensor]]): an iterable batch data loader which yields tuples of
+            batch validation data of the form `(x_batch, y_batch)`. The `x_batch` and `y_batch` data for each batch must
+            conform to the structure specified in `runner.classifier_accuracy_score`: ``x_batch` must be compatible with
+            the model that the `runner` was initialized with, and `y_batch` must be of the shape `(N,M)`, where `N` is
+            the number of samples in the batch and `M` is the number of unique classes that the classifier can predict.
+            num_epochs (int): The number of epochs to train before halting.
+            autosave_interval_epochs (int, optional): The number of epochs to train before saving the `runner`'s state
+            with `runner._save_training_state`. Regardless of this value, if a model is found to have the highest
+            validation accuracy so far after training an epoch, the `runner` state will be saved. Defaults to 1.
+        """        
+        
         # Track epochs of training
         starting_epoch = self._epoch
         
@@ -200,6 +314,15 @@ class runner:
 
 
     def predict_batch(self, x_batch: Any) -> Tensor:
+        """Evaluates the `runner` model's predicted `y_batch` based on an input `x_batch`, without any gradients.
+
+        Args:
+            x_batch (Any): Batched data to be passed to the `.forward()` method of the runner's model.
+
+        Returns:
+            Tensor: `y_hat_batch`, the output of the forward pass of x_batch.
+        """        
+        
         with torch.no_grad():
             x_batch = x_batch.to(self._device)
             y_hat = self._model.forward(x_batch)
@@ -207,10 +330,36 @@ class runner:
     
     
     def quantize_classifier_predictions(batched_predictions: Tensor) -> Tensor:
+        """"Snaps" a batch of labels to single values by computing the argmax along axis 1. Used to evaluate the
+        accuracy of a classifier model.
+
+        Args:
+            batched_predictions (Tensor): A set of predictions (`y_hat_batched`) of the shape `(N,M)`, where `N` is the
+            number of samples in the batch and `M` is the number of unique classes that the classifier can predict.
+
+        Returns:
+            Tensor: A set of predictions of shape `(N)`, where each item in the output corresponds to the argmax of the
+            corresponding row of `batched_predictions`.
+        """        
+        
         return torch.argmax(batched_predictions, axis=1).cpu()
     
     
     def classifier_accuracy_score(self, batch_iterable: Iterable[Tuple[Any, Tensor]]) -> float:
+        """Evaluates the accuracy of the `runner`'s model against some test/validation dataset.
+
+        Args:
+            batch_iterable (Iterable[Tuple[Any, Tensor]]): an iterable batch data loader which yields tuples of
+            batch training data of the form `(x_batch, y_batch)`. The `x_batch` and `y_batch` data for each batch must
+            conform to the structure specified in `runner.quantize_classifier_predictions`: `x_batch` must be compatible
+            with the model that the `runner` was initialized with, and `y_batch` must be of the shape `(N,M)`, where `N`
+            is the number of samples in the batch and `M` is the number of unique classes that the classifier can
+            predict.
+
+        Returns:
+            float: The `runner`'s model accuracy against the `batch_iterable` dataset, as a fraction.
+        """        
+        
         total_samples = 0
         correct_samples = 0
         
