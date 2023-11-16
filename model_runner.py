@@ -3,7 +3,7 @@ import torch
 from torch import Tensor
 from torch import nn
 import save_load_model_parameters
-from typing import Iterator, Tuple, Any
+from typing import Iterable, Tuple, Any
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score
 import os
@@ -139,9 +139,9 @@ class runner:
         return (loss.item(), num_accurate_predictions, num_samples)
     
     
-    def _train_epoch(self, train_batch_iterator: Iterator[Tuple[Any, Tensor]]) -> float:
+    def _train_epoch(self, train_batch_iterable: Iterable[Tuple[Any, Tensor]]) -> None:
         # Restart the iterator to begin a new epoch
-        iter(train_batch_iterator)
+        train_batch_iterator = iter(train_batch_iterable)
         
         # Train each batch and track loss, training accuracy
         epoch_total_loss = 0.
@@ -178,10 +178,10 @@ class runner:
         
         for epoch in range(num_epochs):
             # Train the epoch
-            self._train_epoch(train_batch_iterator)
+            self._train_epoch(train_batch_iterable)
             
             # Measure model accuracy against the validation dataset
-            val_accuracy = self.classifier_accuracy_score(val_batch_iterator)
+            val_accuracy = self.classifier_accuracy_score(val_batch_iterable)
             self._val_acc_history.append(val_accuracy)
             
             # Find the most accurate (on the validation test set) model which has been trained so far
@@ -214,8 +214,8 @@ class runner:
         total_samples = 0
         correct_samples = 0
         
-        with tqdm(batch_iterator, desc="Evaluating model accuracy", position=0, leave=True, unit="batches") as tqdm_batch_iterator:
-            for batched_x, batched_y in iter(tqdm_batch_iterator):
+        with tqdm(batch_iterable, desc="Evaluating model accuracy", position=0, leave=True, unit="batches") as tqdm_batch_iterable:
+            for batched_x, batched_y in iter(tqdm_batch_iterable):
                 batched_y_hat = self.predict_batch(batched_x)
                 correct_samples += accuracy_score(runner.quantize_classifier_predictions(batched_y), runner.quantize_classifier_predictions(batched_y_hat), normalize=False)
                 total_samples += batched_y.shape[0]
