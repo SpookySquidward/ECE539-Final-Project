@@ -393,7 +393,7 @@ class runner:
         
         # Title
         if title:
-            fig.suptitle(title)
+            plt.suptitle(title)
         
         # ax0: accuracy
         ax0.plot(epoch_range, self._train_acc_history, color="tab:orange", label="Train Accuracy")
