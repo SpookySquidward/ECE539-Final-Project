@@ -2,6 +2,7 @@ from pathlib import Path  # https://realpython.com/python-pathlib/
 from sklearn.linear_model import LogisticRegression
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
+import datetime
 
 
 def create_count_vector(df: pd.DataFrame) -> CountVectorizer:
@@ -56,9 +57,11 @@ def main():
     project_root = Path(__file__).parent.parent
     train_path = project_root.joinpath("dataset", "formatted_train.csv")
     val_path = project_root.joinpath("dataset", "formatted_val.csv")
+    test_path = project_root.joinpath("dataset", "formatted_test.csv")
 
-    train_df = pd.read_csv(train_path).head(10000)
-    val_df = pd.read_csv(val_path).head(10000)
+    train_df = pd.read_csv(train_path)
+    val_df = pd.read_csv(val_path)
+    test_df = pd.read_csv(test_path)
 
     # Train model
     cv = create_count_vector(train_df)
@@ -67,8 +70,20 @@ def main():
     # Get accuracy
     x_train, y_train = format_df_to_bow(cv, train_df)
     x_val, y_val = format_df_to_bow(cv, val_df)
+    x_test, y_test = format_df_to_bow(cv, test_df)
     print("Train accuracy: ", round(bow_model.score(x_train, y_train), 3))
     print("Validation Accuracy: ", round(bow_model.score(x_val, y_val), 3))
+    print("Test Accuracy: ", round(bow_model.score(x_test, y_test), 3))
+
+    # Writing to file
+    current_time = datetime.datetime.now()
+
+    with open("BoW_lr_res.txt", "a") as res_file:
+        # Writing data to a file
+        res_file.write(f'{current_time}')
+        res_file.write(f'\nTrain accuracy: {round(bow_model.score(x_train, y_train), 3)}')
+        res_file.write(f'\nValidation Accuracy: {round(bow_model.score(x_val, y_val), 3)}')
+        res_file.write(f'\nTest Accuracy: {round(bow_model.score(x_test, y_test), 3)}\n')
 
 
 if __name__ == "__main__":
