@@ -31,7 +31,7 @@ def train_bow(train_df: pd.DataFrame, cv: None | CountVectorizer = None) -> Logi
     x_train, y_train = format_df_to_bow(cv, train_df)
 
     # Train a logistic regression on the transformed data
-    log_reg = LogisticRegression(solver="lbfgs", n_jobs=-1, random_state=7, max_iter=400).fit(x_train, y_train)
+    log_reg = LogisticRegression(solver="lbfgs", n_jobs=-1, random_state=7, max_iter=4000).fit(x_train, y_train)
     # If we get a warning wrt. max_iter, look here:
     # https://stackoverflow.com/questions/62658215/convergencewarning-lbfgs-failed-to-converge-status-1-stop-total-no-of-iter
 
