@@ -1,6 +1,7 @@
 import pandas as pd
 from pathlib import Path
 import os
+from csv import QUOTE_ALL
 
 
 def snap_reviews(rating: int):
@@ -49,8 +50,8 @@ def main():
     formatted_test = format_data(raw_test_path)
 
     # Write to csv
-    formatted_test.to_csv(project_root.joinpath("dataset", "formatted_test.csv"), index=False)
-    formatted_train.to_csv(project_root.joinpath("dataset", "formatted_train.csv"), index=False)
+    formatted_test.to_csv(project_root.joinpath("dataset", "formatted_test.csv"), index=False, quoting=QUOTE_ALL)
+    formatted_train.to_csv(project_root.joinpath("dataset", "formatted_train.csv"), index=False, quoting=QUOTE_ALL)
 
     # Check sizes
     print("--> Running format_data")
@@ -58,7 +59,6 @@ def main():
     print("\nDataframe shape for train\nExpected rows: 2400000", "\nActual rows: ", rows)
     rows, columns = formatted_test.shape
     print("\nDataframe shape for test\nExpected rows: 520000", "\nActual rows: ", rows)
-
 
 
 if __name__ == "__main__":

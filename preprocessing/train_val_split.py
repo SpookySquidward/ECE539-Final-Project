@@ -1,6 +1,7 @@
 from pathlib import Path
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from csv import QUOTE_ALL
 
 
 def split_in_train_and_validation(train_data: Path | pd.DataFrame, validation_size: float) -> None:
@@ -12,7 +13,7 @@ def split_in_train_and_validation(train_data: Path | pd.DataFrame, validation_si
 
     if isinstance(train_data, Path):
         train_data = pd.read_csv(train_data)
-
+        
     og_rows = train_data.shape[0]
     train_df, val_df = train_test_split(train_data, train_size=1 - validation_size, random_state=11)
 
@@ -25,8 +26,8 @@ def split_in_train_and_validation(train_data: Path | pd.DataFrame, validation_si
 
     # Save as CSV files - could be made to overwrite formatted train
     project_root = Path(__file__).parent.parent
-    train_df.to_csv(project_root.joinpath("dataset", "formatted_train.csv"), index=False)
-    val_df.to_csv(project_root.joinpath("dataset", "formatted_val.csv"), index=False)
+    train_df.to_csv(project_root.joinpath("dataset", "formatted_train.csv"), index=False, quoting=QUOTE_ALL)
+    val_df.to_csv(project_root.joinpath("dataset", "formatted_val.csv"), index=False, quoting=QUOTE_ALL)
 
 
 def main():

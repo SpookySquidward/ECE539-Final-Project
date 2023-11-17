@@ -1,7 +1,7 @@
 from pathlib import Path
 from reformat_data import format_data
 from train_val_split import split_in_train_and_validation
-
+from csv import QUOTE_ALL
 
 def run_preprocessing_pipeline(project_root: Path, train_path: Path, test_path: Path) -> None:
     """
@@ -22,7 +22,7 @@ def run_preprocessing_pipeline(project_root: Path, train_path: Path, test_path: 
     print("\nDataframe shape for train\nExpected rows: 2400000", "\nActual rows: ", rows)
 
     # Write to csv
-    formatted_test.to_csv(project_root.joinpath("dataset", "formatted_test.csv"), index=False)
+    formatted_test.to_csv(project_root.joinpath("dataset", "formatted_test.csv"), index=False, quoting=QUOTE_ALL)
 
     # Split train in train and validation
     split_in_train_and_validation(formatted_train, 0.2)
