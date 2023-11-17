@@ -6,7 +6,7 @@ import save_load_model_parameters
 from typing import Iterable, Tuple, Any
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score
-import os
+from matplotlib import pyplot as plt
 
 
 class runner:
@@ -371,3 +371,54 @@ class runner:
         
         average_accuracy_score = correct_samples / total_samples
         return average_accuracy_score
+    
+    
+    def plot_model_performance(self, title: str = None, show_loss: bool = False) -> None:
+        """Displays a plot of the model's historic accuracy on the train/val datasets, as well as a plot of the model's
+        historic training loss, if desired.
+
+        Args:
+            title (str, optional): If specified, the title which will be used for the output plot. Defaults to None.
+            show_loss (bool, optional): If True, plot the model's historic training loss. Defaults to False.
+        """
+        
+        # Subplots
+        if show_loss:
+            fig, (ax0, ax1) = plt.subplots(2, sharex=True)
+        else:
+            ax0 = plt.axes()
+        
+        # X-axis: make epochs one-indexed
+        epoch_range = np.arange(self._epoch) + 1
+        
+        # Title
+        if title:
+            fig.suptitle(title)
+        
+        # ax0: accuracy
+        ax0.plot(epoch_range, self._train_acc_history, color="tab:orange", label="Train Accuracy")
+        ax0.plot(epoch_range, self._val_acc_history, color="tab:blue", label="Validation Accuracy")
+        ax0.set_xlabel("Epoch")
+        ax0.set_ylabel("Accuracy")
+        ax0.legend(loc="lower right")
+        ax0.grid(which = "both")
+        ax0.minorticks_on()
+        ax0.tick_params(which="minor", grid_linestyle=":")
+        
+        # ax1: loss
+        if show_loss:
+            ax1.plot(epoch_range, self._loss_history, color="tab:orange", label="Train Loss")
+            ax1.set_xlabel("Epoch")
+            ax1.set_ylabel("Loss")
+            ax1.legend(loc="upper right")
+            ax1.grid(which = "both")
+            ax1.minorticks_on()
+            ax1.tick_params(which="minor", grid_linestyle=":")
+            
+            # Share the epoch axis
+            ax0.label_outer()
+            ax1.label_outer()
+            plt.subplots_adjust(hspace=0)
+            
+        
+        plt.show()
