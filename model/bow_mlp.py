@@ -5,22 +5,21 @@ import pandas as pd
 import numpy as np
 import torch
 from pathlib import Path
+import random
 
 
 import matplotlib.pyplot as plt
 from matplotlib import cm
+import mlp_helper
 plt.style.use('ggplot')
 
-def to1hot(data):
-    """Converts a dataframe into its 1hot encodings."""
-    one_hot_encoded_data = pd.get_dummies(data, columns = ['sentiment', 'body']) 
-    return one_hot_encoded_data
 
 def mlp_data(train_path: Path, test_path: Path):
+    """Trains the data through an mlp"""
     train_dataframe = pd.read_csv(train_path)
     test_dataframe = pd.read_csv(test_path)
 
-    train_1hot = to1hot(train_dataframe)
+    train_1hot = mlp_helper.to1hot(train_dataframe)
     train_data = torch.tensor(train_1hot)
 
 
