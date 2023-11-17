@@ -11,17 +11,23 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 plt.style.use('ggplot')
 
-def mlp_data(train_path: Path, test_path: Path):
-    train_dataframe = pd.read_csv(filepath_or_buffer=train_path, names=["sentiment", "title", "body"])
-    test_data = pd.read_csv(filepath_or_buffer=test_path, names=["sentiment", "title", "body"])
+def to1hot(data):
+    """Converts a dataframe into its 1hot encodings."""
+    one_hot_encoded_data = pd.get_dummies(data, columns = ['sentiment', 'body']) 
+    return one_hot_encoded_data
 
-    train_data = pd.DataFrame(train_dataframe["body"])
-    train_data=torch.tensor(train_data.values)
+def mlp_data(train_path: Path, test_path: Path):
+    train_dataframe = pd.read_csv(train_path)
+    test_dataframe = pd.read_csv(test_path)
+
+    train_1hot = to1hot(train_dataframe)
+    train_data = torch.tensor(train_1hot)
+
 
     print(train_data)
     #test_data=torch.tensor(test_data)
 
-    return train_data
+    return 0
 
 
 
