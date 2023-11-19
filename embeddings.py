@@ -25,10 +25,19 @@ class review_embedder:
             self.load_embedding_model(embedding_model)
         
         
+    def list_available_models() -> list[str]:
+        """Gets the text embedding models available in Gensim.
+
+        Returns:
+            list[str]: A list of all text embedding models available in Gensim.
+        """
+        return gensim.downloader.info(name_only=True)["models"]
+
+
     def load_embedding_model(self, embedding_model: str) -> None:
         # Check to see if the specified embedding_model is valid; see:
         # https://radimrehurek.com/gensim/downloader.html#gensim.downloader.info
-        available_models = gensim.downloader.info(name_only=True)["models"]
+        available_models = review_embedder.list_available_models()
         if not embedding_model in available_models:
             raise ValueError(f'Invalid embedding_model speficied: "{embedding_model}". The following models are available from other research groups: {available_models}')
         
