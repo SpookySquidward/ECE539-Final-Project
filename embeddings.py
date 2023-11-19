@@ -53,7 +53,7 @@ class review_embedder:
         return gensim.utils.tokenize(text, lowercase=True, deacc=True)
     
     
-    def _embed_text_vectors(self, text: str, oov_feature = True) -> typing.Iterable[np.ndarray]:
+    def _embed_text_vectors(self, text: str, oov_feature = True) -> typing.Generator[np.ndarray, None, None]:
         # Empty input check
         if (not text) or (len(text) == 0):
             return np.empty([0, self._embedding_vector_length + oov_feature])
