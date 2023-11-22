@@ -289,7 +289,7 @@ class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.T
     embedding all of a dataset's reviews at once)
     """
 
-    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, review_label_mapping: dict[str, torch.Tensor], oov_feature = True, title_body_feature = True, chunk_size: int = 5000):
+    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, review_label_mapping: dict[str, torch.Tensor], oov_feature = True, title_body_feature = True, chunk_size: int = 500):
         """Initializes the embedder/sampler to use a given set of reviews (typically a full dataset) and review embedder
 
         Args:
@@ -301,7 +301,7 @@ class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.T
             title_body_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
             chunk_size (int, optional): The number of reviews to embed and cache for future sampling at one time. Larger
             values increase RAM usage and peak latency (when a new chunk needs to be loaded) but decrease the overall
-            time required to iterate through a full dataset. Defaults to 5000.
+            time required to iterate through a full dataset. Defaults to 500.
         """
 
         # Store parameters
@@ -384,7 +384,7 @@ class batched_review_embedder_sampler(typing.Iterable[typing.Tuple[torch.nn.util
     """Samples from a list of reviews and embeds them as-needed into `PackedSequence` objects for use with RNN models.
     """
 
-    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, review_label_mapping: dict[str, torch.Tensor], batch_size: int = 100, oov_feature = True, title_body_feature = True, chunk_size: int = 5000):
+    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, review_label_mapping: dict[str, torch.Tensor], batch_size: int = 100, oov_feature = True, title_body_feature = True, chunk_size: int = 500):
         """Initializes the embedder/sampler to use a given set of reviews (typically a full dataset) and review embedder
 
         Args:
@@ -396,7 +396,7 @@ class batched_review_embedder_sampler(typing.Iterable[typing.Tuple[torch.nn.util
             oov_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
             title_body_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
             chunk_size (int, optional): The number of reviews to embed and cache for future sampling at one time; see
-            `review_embedder_sampler.__init__()`. Defaults to 5000.
+            `review_embedder_sampler.__init__()`. Defaults to 500.
         """
 
         # Initialize the actual embedder
