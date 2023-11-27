@@ -266,7 +266,8 @@ class runner:
         self._train_acc_history.append(epoch_train_accuracy)
                 
     
-    def train(self, train_batch_iterable: Iterable[Tuple[Any, Tensor]], val_batch_iterable: Iterable[Tuple[Any, Tensor]], num_epochs: int, autosave_interval_epochs: int = 1):
+    def train(self, train_batch_iterable: Iterable[Tuple[Any, Tensor]],  num_epochs: int, val_batch_iterable: Iterable[Tuple[Any, Tensor]] = None, autosave_interval_epochs: int = 1):
+        
         """Trains the `runner`'s model using a training and validaiton dataset, and collects statistics about the
         model's loss, train accuracy, and validation accuracy histories.
 
@@ -276,16 +277,19 @@ class runner:
             conform to the structure specified in `runner._train_batch`: `x_batch` must be compatible with the model
             that the `runner` was initialized with, and `y_batch` must be of the shape `(N,*)`, where `N` is the number
             of samples in the batch and `*` is any dimension.
-            val_batch_iterable (Iterable[Tuple[Any, Tensor]]): an iterable batch data loader which yields tuples of
-            batch validation data of the form `(x_batch, y_batch)`. The `x_batch` and `y_batch` data for each batch must
-            conform to the structure specified in `runner.classifier_accuracy_score`: ``x_batch` must be compatible with
-            the model that the `runner` was initialized with, and `y_batch` must be of the shape `(N,M)`, where `N` is
-            the number of samples in the batch and `M` is the number of unique classes that the classifier can predict.
             num_epochs (int): The number of epochs to train before halting.
+            val_batch_iterable (Iterable[Tuple[Any, Tensor]], optional): an iterable batch data loader which yields
+            tuples of batch validation data of the form `(x_batch, y_batch)`. The `x_batch` and `y_batch` data for each
+            batch must conform to the structure specified in `runner.classifier_accuracy_score`: ``x_batch` must be
+            compatible with the model that the `runner` was initialized with, and `y_batch` must be of the shape
+            `(N,M)`, where `N` is the number of samples in the batch and `M` is the number of unique classes that the
+            classifier can predict. If specified, the model's performance will be evaluated using this loader at the end
+            of every epoch in order to always save the most accurate model state; otherwise, the model state will only
+            be saved every `autosave_interval_epochs` epochs. Defaults to None.
             autosave_interval_epochs (int, optional): The number of epochs to train before saving the `runner`'s state
             with `runner._save_training_state`. Regardless of this value, if a model is found to have the highest
             validation accuracy so far after training an epoch, the `runner` state will be saved. Defaults to 1.
-        """        
+        """
         
         # Track epochs of training
         starting_epoch = self._epoch
@@ -294,17 +298,22 @@ class runner:
             # Train the epoch
             self._train_epoch(train_batch_iterable)
             
-            # Measure model accuracy against the validation dataset
-            val_accuracy = self.classifier_accuracy_score(val_batch_iterable)
-            self._val_acc_history.append(val_accuracy)
+            if val_batch_iterable is not None:
+                # Measure model accuracy against the validation dataset
+                val_accuracy = self.classifier_accuracy_score(val_batch_iterable)
+                self._val_acc_history.append(val_accuracy)
+                
+                # Find the most accurate (on the validation test set) model which has been trained so far
+                most_accurate_model_epoch = np.argmax(self._val_acc_history) + 1
+                # If the current model is the most accurate one, save it to the disk, even if the
+                # autosave interval hasn't been reached yet
+                if most_accurate_model_epoch == self._epoch:
+                    print(f"This epoch was the most accurate so far: validation accuracy = {np.max(self._val_acc_history) * 100:.2f}%. Saving model state...")
+                    self._save_training_state(self._model_name + runner.file_name_suffix_best, overwrite=True)
             
-            # Find the most accurate (on the validation test set) model which has been trained so far
-            most_accurate_model_epoch = np.argmax(self._val_acc_history) + 1
-            # If the current model is the most accurate one, save it to the disk, even if the
-            # autosave interval hasn't been reached yet
-            if most_accurate_model_epoch == self._epoch:
-                print(f"This epoch was the most accurate so far: validation accuracy = {np.max(self._val_acc_history) * 100:.2f}%. Saving model state...")
-                self._save_training_state(self._model_name + runner.file_name_suffix_best, overwrite=True)
+            else:
+                # No validation dataset specified, skip validation
+                self._val_acc_history.append(None)
             
             # Save the latest runner state, if the autosave interval has been reached
             epochs_since_starting_training = self._epoch - starting_epoch
