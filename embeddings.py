@@ -61,6 +61,13 @@ class review_embedder:
         
     @property
     def feature_embedding_size(self) -> int:
+        """The number of features into which this `review_embedder` embeds each token (word) of text. This is the sum of
+        features from 3 sources:
+        - The features from the `embedding_model` with which this `review_embedder` was initialized
+        - One feature if this `review_embedder` was initialized with oov_feature set to True
+        - One feature if this `review_embedder` was initialized with title_body_feature set to True
+        """
+        
         # If no embedding model is specified, return early
         if not self._embedding_model:
             return
