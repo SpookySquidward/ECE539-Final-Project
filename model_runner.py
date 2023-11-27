@@ -345,6 +345,39 @@ class runner:
         return torch.argmax(batched_predictions, axis=1).cpu()
     
     
+    def predict_dataset(self, batch_iterable: Iterable[Tuple[Any, Tensor]]) -> Tuple[Tensor, Tensor]:
+        """Calculates a model's predictions for an entire dataset.
+
+        Args:
+            batch_iterable (Iterable[Tuple[Any, Tensor]]): an iterable batch data loader which yields tuples of
+            batch training data of the form `(x_batch, y_batch)`. The `x_batch` and `y_batch` data for each batch must
+            conform to the structure specified in `runner.quantize_classifier_predictions`: `x_batch` must be compatible
+            with the model that the `runner` was initialized with, and `y_batch` must be of the shape `(N,M)`, where `N`
+            is the number of samples in the batch and `M` is the number of unique classes that the classifier can
+            predict.
+
+        Returns:
+            Tuple[Tensor, Tensor]: Two tensors of the form `(y, yhat)`, where `y` and `y_hat` are both of shape `(L)`,
+            where `L` is the total number of samples in the `batch_iterable`'s dataset and `y_hat` are the predictions
+            of `y` using the current model.
+        """
+        
+        y_batches = []
+        yhat_batches = []
+        
+        with tqdm(batch_iterable, desc="Evaluating model predictions", position=0, leave=True, unit="batches") as tqdm_batch_iterable:
+            for batched_x, batched_y in iter(tqdm_batch_iterable):
+                batched_y = runner.quantize_classifier_predictions(batched_y)
+                batched_y_hat = runner.quantize_classifier_predictions(self.predict_batch(batched_x))
+                y_batches.append(batched_y)
+                yhat_batches.append(batched_y_hat)
+        
+        y = torch.concat(y_batches, dim=0)
+        yhat = torch.concat(yhat_batches, dim=0)
+        
+        return y, yhat
+    
+    
     def classifier_accuracy_score(self, batch_iterable: Iterable[Tuple[Any, Tensor]]) -> float:
         """Evaluates the accuracy of the `runner`'s model against some test/validation dataset.
 
@@ -357,20 +390,10 @@ class runner:
             predict.
 
         Returns:
-            float: The `runner`'s model accuracy against the `batch_iterable` dataset, as a fraction.
+            float: The `runner`'s model accuracy against the `batch_iterable` dataset, as a fraction of 1.
         """        
         
-        total_samples = 0
-        correct_samples = 0
-        
-        with tqdm(batch_iterable, desc="Evaluating model accuracy", position=0, leave=True, unit="batches") as tqdm_batch_iterable:
-            for batched_x, batched_y in iter(tqdm_batch_iterable):
-                batched_y_hat = self.predict_batch(batched_x)
-                correct_samples += accuracy_score(runner.quantize_classifier_predictions(batched_y), runner.quantize_classifier_predictions(batched_y_hat), normalize=False)
-                total_samples += batched_y.shape[0]
-        
-        average_accuracy_score = correct_samples / total_samples
-        return average_accuracy_score
+        return accuracy_score(*self.predict_dataset(batch_iterable))
     
     
     def plot_model_performance(self, title: str = None, show_loss: bool = False) -> None:
