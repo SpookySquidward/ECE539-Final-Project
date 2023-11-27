@@ -49,8 +49,8 @@ class review_LSTM(nn.Module):
         output, (h_n, c_n) = self._LSTM.forward(x)
         
         # Based on the final hidden state, use the output classifier to make a label prediction
-        h_n = h_n.reshape((-1, self._hidden_size))
-        yhat = self._output_classifier.forward(h_n)
+        c_n = c_n.reshape((-1, self._hidden_size))
+        yhat = self._output_classifier.forward(c_n)
         
         # Return the results from the output classifier
         return yhat
