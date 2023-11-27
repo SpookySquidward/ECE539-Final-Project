@@ -61,6 +61,5 @@ def main():
     print("\nDataframe shape for test\nExpected rows: 520000", "\nActual rows: ", rows)
 
 
-
 if __name__ == "__main__":
     main()
