@@ -20,19 +20,28 @@ class review_embedder:
     """Embeds raw review text into feature vectors via Gensim.
     """
 
-    def __init__(self, review_labels: list[str], embedding_model: str = None) -> None:
+    def __init__(self, review_labels: list[str], embedding_model: str = None, oov_feature = True, title_body_feature = True) -> None:
         """Initializes the embedder with the specified embedding model; available models are given by
         `review_embedder.list_available_models()`.
 
         Args:
             review_labels(list[str]): All the unique labels in the review dataset. Labels will be emdedded one-hot sytle
             in the order that labels are specified here.
+            oov_feature (bool, optional): If True, adds an extra label feature which is usually zero, except for when a
+            token in the specified `text` cannot be embedded because it is not contained within the `review_embedder`'s
+            embedding model list of tokens (i.e. the token is "out-of-vocab", or "oov"). When a token is oov and cannot
+            be embedded, if `oov_feature` is True, the resulting feature vector is all zeroes except for a one in the
+            oov_feature position; if `oov_feature` is False, oov tokens are skipped. Defaults to True.
+            title_body_feature (bool, optional): If True, adds an extra label feature which is zero for all text tokens
+            which are part of the review title and one for all text tokens which are part of the review body. Defaults
+            to True.
             embedding_model (str, optional): The embedding model to load, if specified. Defaults to None.
         """
         
         # Store parameters
-        self._embedding_model = embedding_model
         self._embedding_vector_length = None
+        self._oov_feature = oov_feature
+        self._title_body_feature = title_body_feature
         
         # Load the embedding model from Gensim, if specified
         if embedding_model:
@@ -48,6 +57,19 @@ class review_embedder:
         
         for i, key in enumerate(review_labels):
             self.review_label_mapping[key] = one_hot_mappings[i, :]
+        
+        
+    @property
+    def feature_embedding_size(self) -> int:
+        # If no embedding model is specified, return early
+        if not self._embedding_model:
+            return
+        
+        # The final embedding dimension comes from the gensim embedder and the oov and title_body feature flags
+        len_gensim_embedding = self._embedding_model[self._embedding_model.index_to_key[0]].shape[0]
+        len_oov_feature = int(self._oov_feature)
+        len_title_body_feature = int(self._title_body_feature)
+        return len_gensim_embedding + len_oov_feature + len_title_body_feature
         
         
     def list_available_models() -> list[str]:
@@ -97,33 +119,29 @@ class review_embedder:
         return gensim.utils.tokenize(text, lowercase=True, deacc=True)
     
     
-    def _embed_text_vectors(self, text: str, oov_feature = True) -> typing.Generator[np.ndarray, None, None]:
+    def _embed_text_vectors(self, text: str) -> typing.Generator[np.ndarray, None, None]:
         """Embeds a string of text into a list of vectors using the `review_embedder`'s embedding model.
 
         Args:
             text (str): The text to embed.
-            oov_feature (bool, optional): If True, adds an extra label feature which is usually zero, except for when a
-            token in the specified `text` cannot be embedded because it is not contained within the `review_embedder`'s
-            embedding model list of tokens (i.e. the token is "out-of-vocab", or "oov"). When a token is oov and cannot
-            be embedded, if `oov_feature` is True, the resulting feature vector is all zeroes except for a one in the
-            final feature; if `oov_feature` is False, oov tokens are skipped. Defaults to True.
 
         Returns:
             typing.Generator[np.ndarray, None, None]: A generator of embedded vectors for each token in `text`.
 
         Yields:
             np.ndarray: An embedded vector for a single token from `text`. The vector is of size `(1*D)`, where `D` is
-            the number of dimensions the `review_embedder`'s embedding model outputs, plus one if `oov_feature` is True.
+            the number of dimensions the `review_embedder`'s embedding model outputs, plus one if the `review_embedder`
+            was initialized with `oov_feature` set to True.
         """
 
         # Empty input check
         if (not text) or (len(text) == 0):
-            return np.empty([0, self._embedding_vector_length + oov_feature])
+            return np.empty([0, self._embedding_vector_length + self._oov_feature])
         
         for word in review_embedder._split_text(text):
             # oov_feature is True, add an extra feature to in-vocab data and return a one-hot oov
             # vector to out-of-vocab data.
-            if oov_feature:
+            if self._oov_feature:
                 try:
                     # Add a zero out-of-vocab flag if the embedding could be found
                     yield np.concatenate([self._embedding_model[word], np.zeros(1)], axis=0).reshape([1, -1])
@@ -140,60 +158,47 @@ class review_embedder:
                     continue
     
     
-    def _embed_text_tensor(self, text: str, oov_feature = True) -> np.ndarray:
+    def _embed_text_tensor(self, text: str) -> np.ndarray:
         """Embeds a string of text into a tensor representing it using the `review_embedder`'s current embedding model.
 
         Args:
             text (str): The text to embed.
-            oov_feature (bool, optional): If True, adds an extra label feature which is usually zero, except for when a
-            token in the specified `text` cannot be embedded because it is not contained within the `review_embedder`'s
-            embedding model list of tokens (i.e. the token is "out-of-vocab", or "oov"). When a token is oov and cannot
-            be embedded, if `oov_feature` is True, the resulting feature vector is all zeroes except for a one in the
-            final feature; if `oov_feature` is False, oov tokens are skipped. Defaults to True.
 
         Returns:
             np.ndarray: A tensor of size `(N*D)`, where `N` is the number of tokens in `text` once it is
             split with `review_embedder._split_text()` (possibly zero), and `D` is the number of dimensions the
-            `review_embedder`'s embedding model outputs, plus one if `oov_feature` is True.
+            `review_embedder`'s embedding model outputs, plus one if the `review_embedder` was initialized with
+            `oov_feature` set to True.
         """
 
-        embedded_text = list(self._embed_text_vectors(text, oov_feature))
+        embedded_text = list(self._embed_text_vectors(text))
         if len(embedded_text) > 0:
             return  np.concatenate(embedded_text, axis=0)
         else:
             # Blank or non-alpha text, return an empty tensor
-            return np.empty([0, self._embedding_vector_length + oov_feature])
+            return np.empty([0, self._embedding_vector_length + self._oov_feature])
         
     
-    def embed_review_features(self, review: dataset.review, oov_feature = True, title_body_feature = True, dtype=torch.float32) -> torch.Tensor:
+    def embed_review_features(self, review: dataset.review, dtype=torch.float32) -> torch.Tensor:
         """Embeds the title and body of a review into a tensor representation using the `review_embedder`'s current
         embedding model.
 
         Args:
             review (dataset.review): The review to embed.
-            oov_feature (bool, optional): If True, adds an extra label feature which is usually zero, except for when a
-            token in the specified `text` cannot be embedded because it is not contained within the `review_embedder`'s
-            embedding model list of tokens (i.e. the token is "out-of-vocab", or "oov"). When a token is oov and cannot
-            be embedded, if `oov_feature` is True, the resulting feature vector is all zeroes except for a one in the
-            oov_feature position; if `oov_feature` is False, oov tokens are skipped. Defaults to True.
-            title_body_feature (bool, optional): If True, adds an extra label feature which is zero for all text tokens
-            which are part of the review title and one for all text tokens which are part of the review body. Defaults
-            to True.
             dtype (Any, optional): The numeric datatype of the returned tensor's elements. Defaults to torch.float32.
 
         Returns:
             torch.Tensor: A tensor of size `(N*D)`, where `N` is the total number of tokens in `review` once its title
-            and body strings are split with `review_embedder._split_text()` (possibly zero), and `D` is the number of
-            dimensions the `review_embedder`'s embedding model outputs, plus one each if `oov_feature` is True or
-            `title_body_feature` is True.
+            and body strings are split with `review_embedder._split_text()` (possibly zero), and `D` is given by the
+            `review_embedder`'s `feature_embedding_size` property.
         """
 
         # Embed the title and the body
-        title_embedding = self._embed_text_tensor(review.title, oov_feature)
-        body_embedding = self._embed_text_tensor(review.body, oov_feature)
+        title_embedding = self._embed_text_tensor(review.title)
+        body_embedding = self._embed_text_tensor(review.body)
         
         # Add an extra feature to denote title vs. body, if desired
-        if title_body_feature:
+        if self._title_body_feature:
             # Add zeros as a feature for the title
             title_embedding = np.concatenate([title_embedding, np.zeros(title_embedding.shape[0]).reshape([-1, 1])], axis=1)
             # And ones as a feature for the body
@@ -209,17 +214,11 @@ class review_embedder:
         return review_feature_embedding
     
 
-    def embed_dataset_features_and_labels(self, reviews: typing.Iterable[dataset.review],
-                                          oov_feature = True, title_body_feature = True) -> list[typing.Tuple[torch.tensor, torch.tensor]]:
+    def embed_dataset_features_and_labels(self, reviews: typing.Iterable[dataset.review]) -> list[typing.Tuple[torch.tensor, torch.tensor]]:
         """Embeds a set of reviews into a list of feature and label tensors representing them.
 
         Args:
             reviews (typing.Iterable[dataset.review]): A set of reviews to embed.
-            oov_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
-            title_body_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
-
-        Raises:
-            ValueError: TODO
 
         Returns:
             list[typing.Tuple[torch.tensor, torch.tensor]]: A list of tuples, with each tuple representing a single
@@ -232,7 +231,7 @@ class review_embedder:
         
         with tqdm(reviews, "Embedding features", position=1, unit="reviews", leave=False) as treviews:
             for review in treviews:
-                features = self.embed_review_features(review, oov_feature, title_body_feature)
+                features = self.embed_review_features(review)
                 
                 # Some reviews have no alpha title or body, which models don't like; if one of
                 # these is found, skip it!
@@ -294,15 +293,13 @@ class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.T
     embedding all of a dataset's reviews at once)
     """
 
-    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, oov_feature = True, title_body_feature = True, chunk_size: int = 500):
+    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, chunk_size: int = 500):
         """Initializes the embedder/sampler to use a given set of reviews (typically a full dataset) and review embedder
 
         Args:
             reviews (typing.List[dataset.review]): A list of reviews to embed and sample from. NOTE: this list is
             shuffled by the `review_embedder_sampler`!
             embedder (review_embedder): The review embedder which is used to convert reviews into feature tensors.
-            oov_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
-            title_body_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
             chunk_size (int, optional): The number of reviews to embed and cache for future sampling at one time. Larger
             values increase RAM usage and peak latency (when a new chunk needs to be loaded) but decrease the overall
             time required to iterate through a full dataset. Defaults to 500.
@@ -311,8 +308,6 @@ class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.T
         # Store parameters
         self._reviews = reviews
         self._embedder = embedder
-        self._oov_feature = oov_feature
-        self._title_body_feature = title_body_feature
         self._chunk_size = chunk_size
     
     
@@ -340,7 +335,7 @@ class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.T
         
         # Fetch the next chunk of data
         next_chunk_reviews = self._reviews[self._review_read_location : self._review_read_location + self._chunk_size]
-        next_chunk_embedded_reviews = self._embedder.embed_dataset_features_and_labels(next_chunk_reviews, self._oov_feature, self._title_body_feature)
+        next_chunk_embedded_reviews = self._embedder.embed_dataset_features_and_labels(next_chunk_reviews)
         self._current_chunk_embedded_reviews = next_chunk_embedded_reviews
         self._chunk_read_location = 0
         
@@ -361,10 +356,10 @@ class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.T
             typing.Tuple[torch.Tensor, torch.Tensor]: A tuple representing a single embedded review, with the form 
             `(embedded_review_features, one_hot_label)`. Here, `embedded_review_features` is a tensor of size `(N*D)`,
             where `N` is the total number of tokens in the sampled review once its title and body strings are split with
-            `review_embedder._split_text()` (possibly zero), and `D` is the number of dimensions the `review_embedder`'s
-            embedding model outputs, plus one each if `oov_feature` is True or `title_body_feature` is True;
-            `one_hot_label` is a tensor of size `(1*C)`, where `C` is the length of the `review_labels` list with which
-            this `review_embedder_sampler`'s `embedder` was initialized.
+            `review_embedder._split_text()` (possibly zero), and `D` is the `feature_embedding_size` of the `embedder`
+            with which this `review_embedder_sampler` was initialized; `one_hot_label` is a tensor of size `(1*C)`,
+            where `C` is the length of the `review_labels` list with which this `review_embedder_sampler`'s `embedder`
+            was initialized.
         """
 
         # Check to see if another chunk of data needs to be loaded
@@ -388,7 +383,7 @@ class batched_review_embedder_sampler(typing.Iterable[typing.Tuple[torch.nn.util
     """Samples from a list of reviews and embeds them as-needed into `PackedSequence` objects for use with RNN models.
     """
 
-    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, batch_size: int = 100, oov_feature = True, title_body_feature = True, chunk_size: int = 500):
+    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, batch_size: int = 100, chunk_size: int = 500):
         """Initializes the embedder/sampler to use a given set of reviews (typically a full dataset) and review embedder
 
         Args:
@@ -396,14 +391,12 @@ class batched_review_embedder_sampler(typing.Iterable[typing.Tuple[torch.nn.util
             embedder (review_embedder): The review embedder which is used to convert reviews into feature tensors.
             batch_size (int, optional): The number of review samples to include in each sample iteration. Defaults to
             100.
-            oov_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
-            title_body_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
             chunk_size (int, optional): The number of reviews to embed and cache for future sampling at one time; see
             `review_embedder_sampler.__init__()`. Defaults to 500.
         """
 
         # Initialize the actual embedder
-        self._sampler = review_embedder_sampler(reviews, embedder, oov_feature, title_body_feature, chunk_size)
+        self._sampler = review_embedder_sampler(reviews, embedder, chunk_size)
         
         # Store parameter
         self._batch_size = batch_size
