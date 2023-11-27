@@ -25,6 +25,8 @@ class review_embedder:
         `review_embedder.list_available_models()`.
 
         Args:
+            review_labels(list[str]): All the unique labels in the review dataset. Labels will be emdedded one-hot sytle
+            in the order that labels are specified here.
             embedding_model (str, optional): The embedding model to load, if specified. Defaults to None.
         """
         
@@ -213,7 +215,6 @@ class review_embedder:
 
         Args:
             reviews (typing.Iterable[dataset.review]): A set of reviews to embed.
-            review_labels (list[str]): TODO
             oov_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
             title_body_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
 
@@ -222,7 +223,8 @@ class review_embedder:
 
         Returns:
             list[typing.Tuple[torch.tensor, torch.tensor]]: A list of tuples, with each tuple representing a single
-            review and having the form `(embedded_review_features, one_hot_label)`
+            review and having the form `(embedded_review_features, one_hot_label)`. Labels are 1D vectors with a size
+            which is the length of the `review_labels` list with which the `review_embedder` was initialized.
         """
         
         
@@ -361,7 +363,8 @@ class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.T
             where `N` is the total number of tokens in the sampled review once its title and body strings are split with
             `review_embedder._split_text()` (possibly zero), and `D` is the number of dimensions the `review_embedder`'s
             embedding model outputs, plus one each if `oov_feature` is True or `title_body_feature` is True;
-            `one_hot_label` is a tensor of size `(1*C)`, where `C` is the number of categories in the dataset.
+            `one_hot_label` is a tensor of size `(1*C)`, where `C` is the length of the `review_labels` list with which
+            this `review_embedder_sampler`'s `embedder` was initialized.
         """
 
         # Check to see if another chunk of data needs to be loaded
@@ -427,7 +430,8 @@ class batched_review_embedder_sampler(typing.Iterable[typing.Tuple[torch.nn.util
             typing.Tuple[torch.nn.utils.rnn.PackedSequence, torch.Tensor]: A tuple representing a batch of embedded
             reviews, with the form `(embedded_review_features, one_hot_labels)`. Here, `embedded_review_features` is a 
             `PackedSequence` containing `batch_size` (from `__init__()`) samples, and `one_hot_labels` is a tensor of
-            size `(batch_size*C)`, where `C` is the number of categories in the dataset.
+            size `(batch_size*C)`, where `C` is the length of the `review_labels` list with which this
+            `batched_review_embedder_sampler`'s `embedder` was initialized.
         """
 
         # Fetch batch_size samples
