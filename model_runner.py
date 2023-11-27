@@ -304,12 +304,13 @@ class runner:
                 self._val_acc_history.append(val_accuracy)
                 
                 # Find the most accurate (on the validation test set) model which has been trained so far
-                most_accurate_model_epoch = np.argmax(list((acc if acc is not None else -1) for acc in self._val_acc_history)) + 1
+                val_acc_history_no_None = list((acc if acc is not None else -1) for acc in self._val_acc_history)
+                most_accurate_model_epoch = np.argmax(val_acc_history_no_None) + 1
                 
                 # If the current model is the most accurate one, save it to the disk, even if the
                 # autosave interval hasn't been reached yet
                 if most_accurate_model_epoch == self._epoch:
-                    print(f"This epoch was the most accurate so far: validation accuracy = {np.max(self._val_acc_history) * 100:.2f}%. Saving model state...")
+                    print(f"This epoch was the most accurate so far: validation accuracy = {np.max(val_acc_history_no_None) * 100:.2f}%. Saving model state...")
                     self._save_training_state(self._model_name + runner.file_name_suffix_best, overwrite=True)
             
             else:
