@@ -20,7 +20,7 @@ class review_embedder:
     """Embeds raw review text into feature vectors via Gensim.
     """
 
-    def __init__(self, embedding_model: str = None) -> None:
+    def __init__(self, review_labels: list[str], embedding_model: str = None) -> None:
         """Initializes the embedder with the specified embedding model; available models are given by
         `review_embedder.list_available_models()`.
 
@@ -28,11 +28,24 @@ class review_embedder:
             embedding_model (str, optional): The embedding model to load, if specified. Defaults to None.
         """
         
+        # Store parameters
         self._embedding_model = embedding_model
         self._embedding_vector_length = None
         
+        # Load the embedding model from Gensim, if specified
         if embedding_model:
             self.load_embedding_model(embedding_model)
+            
+        # Generate string-to-tensor label mappings
+        self._generate_review_label_mapping(review_labels)
+        
+    
+    def _generate_review_label_mapping(self, review_labels: list[str]):
+        self.review_label_mapping = {}
+        one_hot_mappings = torch.eye(len(review_labels)).float()
+        
+        for i, key in enumerate(review_labels):
+            self.review_label_mapping[key] = one_hot_mappings[i, :]
         
         
     def list_available_models() -> list[str]:
@@ -195,13 +208,12 @@ class review_embedder:
     
 
     def embed_dataset_features_and_labels(self, reviews: typing.Iterable[dataset.review],
-                                          review_label_mapping: dict[str, torch.Tensor],
                                           oov_feature = True, title_body_feature = True) -> list[typing.Tuple[torch.tensor, torch.tensor]]:
         """Embeds a set of reviews into a list of feature and label tensors representing them.
 
         Args:
             reviews (typing.Iterable[dataset.review]): A set of reviews to embed.
-            review_label_mapping (dict[str, torch.Tensor]): TODO
+            review_labels (list[str]): TODO
             oov_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
             title_body_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
 
@@ -212,15 +224,6 @@ class review_embedder:
             list[typing.Tuple[torch.tensor, torch.tensor]]: A list of tuples, with each tuple representing a single
             review and having the form `(embedded_review_features, one_hot_label)`
         """
-
-        
-        # Verify the mappings are all the same shape
-        mapping_keys = review_label_mapping.keys()
-        try:
-            # This will throw a RuntimeError when the review label mappings don't have identical shapes
-            torch.stack(list(review_label_mapping[mapping_key] for mapping_key in mapping_keys))
-        except RuntimeError as E:
-            raise ValueError(f"Torch RuntimeError {E}; make sure that all tensors in the review_label_mapping dict have the same shape!")
         
         
         embedded_reviews = []
@@ -235,7 +238,7 @@ class review_embedder:
                     continue
                 
                 # Label mapping needs to be reshaped to have an extra dimension to emulate a batch size of 1
-                one_hot_label = review_label_mapping[review.label].reshape([1, -1])
+                one_hot_label = self.review_label_mapping[review.label].reshape([1, -1])
                 
                 embedded_reviews.append((features, one_hot_label))
         
@@ -289,14 +292,13 @@ class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.T
     embedding all of a dataset's reviews at once)
     """
 
-    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, review_label_mapping: dict[str, torch.Tensor], oov_feature = True, title_body_feature = True, chunk_size: int = 500):
+    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, oov_feature = True, title_body_feature = True, chunk_size: int = 500):
         """Initializes the embedder/sampler to use a given set of reviews (typically a full dataset) and review embedder
 
         Args:
             reviews (typing.List[dataset.review]): A list of reviews to embed and sample from. NOTE: this list is
             shuffled by the `review_embedder_sampler`!
             embedder (review_embedder): The review embedder which is used to convert reviews into feature tensors.
-            review_label_mapping (dict[str, torch.Tensor]): TODO See `review_embedder.embed_review_features()`
             oov_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
             title_body_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
             chunk_size (int, optional): The number of reviews to embed and cache for future sampling at one time. Larger
@@ -307,7 +309,6 @@ class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.T
         # Store parameters
         self._reviews = reviews
         self._embedder = embedder
-        self._review_label_mapping = review_label_mapping
         self._oov_feature = oov_feature
         self._title_body_feature = title_body_feature
         self._chunk_size = chunk_size
@@ -337,7 +338,7 @@ class review_embedder_sampler(typing.Iterable[typing.Tuple[torch.Tensor, torch.T
         
         # Fetch the next chunk of data
         next_chunk_reviews = self._reviews[self._review_read_location : self._review_read_location + self._chunk_size]
-        next_chunk_embedded_reviews = self._embedder.embed_dataset_features_and_labels(next_chunk_reviews, self._review_label_mapping, self._oov_feature, self._title_body_feature)
+        next_chunk_embedded_reviews = self._embedder.embed_dataset_features_and_labels(next_chunk_reviews, self._oov_feature, self._title_body_feature)
         self._current_chunk_embedded_reviews = next_chunk_embedded_reviews
         self._chunk_read_location = 0
         
@@ -384,13 +385,12 @@ class batched_review_embedder_sampler(typing.Iterable[typing.Tuple[torch.nn.util
     """Samples from a list of reviews and embeds them as-needed into `PackedSequence` objects for use with RNN models.
     """
 
-    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, review_label_mapping: dict[str, torch.Tensor], batch_size: int = 100, oov_feature = True, title_body_feature = True, chunk_size: int = 500):
+    def __init__(self, reviews: typing.List[dataset.review], embedder: review_embedder, batch_size: int = 100, oov_feature = True, title_body_feature = True, chunk_size: int = 500):
         """Initializes the embedder/sampler to use a given set of reviews (typically a full dataset) and review embedder
 
         Args:
             reviews (typing.List[dataset.review]): A list of reviews to embed and sample from.
             embedder (review_embedder): The review embedder which is used to convert reviews into feature tensors.
-            review_label_mapping (dict[str, torch.Tensor]): TODO See `review_embedder.embed_review_features()`
             batch_size (int, optional): The number of review samples to include in each sample iteration. Defaults to
             100.
             oov_feature (bool, optional): TODO See `review_embedder.embed_review_features()`. Defaults to True.
@@ -400,7 +400,7 @@ class batched_review_embedder_sampler(typing.Iterable[typing.Tuple[torch.nn.util
         """
 
         # Initialize the actual embedder
-        self._sampler = review_embedder_sampler(reviews, embedder, review_label_mapping, oov_feature, title_body_feature, chunk_size)
+        self._sampler = review_embedder_sampler(reviews, embedder, oov_feature, title_body_feature, chunk_size)
         
         # Store parameter
         self._batch_size = batch_size
