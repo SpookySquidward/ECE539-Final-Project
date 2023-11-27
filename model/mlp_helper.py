@@ -27,7 +27,13 @@ def data_iter(batch_size, features, labels):
         yield features[j], labels[j]
 
 
-def sgd(params, grads, lr):
-    """Minibatch stochastic gradient descent."""
-    for p, g in zip(params, grads):
-        p.data -= g.data * lr
+def sgd(model, lr, m):
+    """Minibatch stochastic gradient descent w/ momentum."""
+    for p in model.parameters():
+        try:
+          p_mom = p.data - p.prev_data
+        except:
+          p_mom = 0
+        p.prev_p = p.data
+        p.data = p.data - lr * p.grad - m * p_mom
+        p.grad = None
