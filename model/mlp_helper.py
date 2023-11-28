@@ -10,9 +10,9 @@ import random
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
-def to1hot(data):
+def to1hot(dataframe):
     """Converts a dataframe into its 1hot encodings."""
-    one_hot_encoded_data = pd.get_dummies(data, columns = ['sentiment', 'body']) 
+    one_hot_encoded_data = pd.get_dummies(dataframe, columns = ['sentiment', 'title', 'body']) 
     return one_hot_encoded_data
 
 def data_iter(batch_size, features, labels):
@@ -37,3 +37,6 @@ def sgd(model, lr, m):
         p.prev_p = p.data
         p.data = p.data - lr * p.grad - m * p_mom
         p.grad = None
+
+def accuracy(y_hat, y):
+    return (y_hat.argmax(dim=1) == y).float().mean()

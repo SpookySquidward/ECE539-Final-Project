@@ -15,7 +15,7 @@ import mlp_helper
 plt.style.use('ggplot')
 
 
-def mlp_data(train_path: Path, test_path: Path, lr, num_epochs, batch_size):
+def mlp(train_path: Path, test_path: Path, lr, num_epochs, batch_size):
     """Trains the data through an mlp"""
     train_dataframe = pd.read_csv(train_path)
     test_dataframe = pd.read_csv(test_path)
@@ -25,11 +25,19 @@ def mlp_data(train_path: Path, test_path: Path, lr, num_epochs, batch_size):
                     verbose=True,
                     learning_rate_init=lr)
     
+
+    split = 0
+    increment = train_dataframe.shape[0] / num_epochs
+    increment = int(increment)
+
+    print("Split: ", train_dataframe[:increment])
     for epoch in range(num_epochs):
-        train_1hot = mlp_helper.to1hot(train_dataframe)
+        if epoch != 0:
+            split += increment
+        train_1hot = mlp_helper.to1hot(train_dataframe[:split])
         train_data = torch.tensor(train_1hot)
 
-        test_1hot = mlp_helper.to1hot(test_dataframe)
+        test_1hot = mlp_helper.to1hot(test_dataframe[:split].values)
         test_data = torch.tensor(test_1hot)
         # Train for one epoch
         losses = []
@@ -70,12 +78,12 @@ def main():
     raw_train_path = project_root.joinpath("dataset", "1formatted_train.csv")
     raw_test_path = project_root.joinpath("dataset", "1formatted_val.csv")
 
-        # Hyperparameters
+    # Hyperparameters
     num_epochs = 50
     lr = 0.01
     batch_size = 16
 
-    mlp_train = mlp_data(raw_train_path, raw_test_path,lr, num_epochs, batch_size)
+    mlp_data = mlp(raw_train_path, raw_test_path,lr, num_epochs, batch_size)
 
 
     # Write to csv
@@ -83,7 +91,7 @@ def main():
 
     # Check sizes
     print("--> Running mlp_data")
-    rows, columns = mlp_train.shape
+    rows, columns = mlp_data.shape
     print("\nDataframe shape for train\nrows: ", rows)
 
 
