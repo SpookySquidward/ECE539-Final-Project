@@ -37,10 +37,8 @@ def converter(train_path: Path, test_path: Path, num_epochs):
     
     return 0
 
-def mlp(train_path: Path, test_path: Path, lr, num_epochs, batch_size):
+def mlp(train_data, test_data, lr, num_epochs, batch_size):
     """Trains the data through an mlp"""
-    train_dataframe = pd.read_csv(train_path)
-    test_dataframe = pd.read_csv(test_path)
 
     model = MLPClassifier(hidden_layer_sizes=(6,5),
                     random_state=5,
