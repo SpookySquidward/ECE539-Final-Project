@@ -15,6 +15,28 @@ import mlp_helper
 plt.style.use('ggplot')
 
 
+def converter(train_path: Path, test_path: Path, num_epochs):
+    """Converts from a dataframe to tensor"""
+    train_dataframe = pd.read_csv(train_path)
+    test_dataframe = pd.read_csv(test_path)
+    
+    split = train_dataframe.shape[0] / num_epochs
+    split_test = test_dataframe.shape[0] / num_epochs
+    split = int(split)
+    split_test = int(split_test)
+
+    for epoch in range(num_epochs):
+        train_1hot = mlp_helper.to1hot(train_dataframe[:split])
+        print(train_1hot)
+        #train_data = torch.tensor(train_1hot['sentiment'])
+        train_dataframe = train_dataframe[split:]
+
+        #test_1hot = mlp_helper.to1hot(test_dataframe[:split_test])
+        #test_data = torch.tensor(test_1hot)
+        #test_dataframe = test_dataframe[split_test:]
+    
+    return 0
+
 def mlp(train_path: Path, test_path: Path, lr, num_epochs, batch_size):
     """Trains the data through an mlp"""
     train_dataframe = pd.read_csv(train_path)
@@ -26,19 +48,7 @@ def mlp(train_path: Path, test_path: Path, lr, num_epochs, batch_size):
                     learning_rate_init=lr)
     
 
-    split = 0
-    increment = train_dataframe.shape[0] / num_epochs
-    increment = int(increment)
-
-    print("Split: ", train_dataframe[:increment])
     for epoch in range(num_epochs):
-        if epoch != 0:
-            split += increment
-        train_1hot = mlp_helper.to1hot(train_dataframe[:split])
-        train_data = torch.tensor(train_1hot)
-
-        test_1hot = mlp_helper.to1hot(test_dataframe[:split].values)
-        test_data = torch.tensor(test_1hot)
         # Train for one epoch
         losses = []
         for X_batch, y_batch in mlp_helper.data_iter(batch_size=batch_size, db=train_data):
@@ -83,7 +93,7 @@ def main():
     lr = 0.01
     batch_size = 16
 
-    mlp_data = mlp(raw_train_path, raw_test_path,lr, num_epochs, batch_size)
+    mlp_data = converter(raw_train_path, raw_test_path,num_epochs)
 
 
     # Write to csv
