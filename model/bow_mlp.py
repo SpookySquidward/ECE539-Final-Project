@@ -2,88 +2,44 @@
 import re
 
 import pandas as pd
-import numpy as np
 import torch
 from pathlib import Path
-import random
 
 from sklearn.neural_network import MLPClassifier
 
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import mlp_helper
-import csv
 plt.style.use('ggplot')
 
 
-def converter(train_path: Path, test_path: Path, num_epochs):
-    """Converts from a dataframe to tensor"""
+def mlp_trainer(train_path: Path, test_path: Path, num_epochs=50, lr=0.01, batch_size=16):
+    """1hot encodes the pandas data and then runs MLPClassifier on the 1hot encoded data"""
     project_root = Path(__file__).parent.parent
     train_dataframe = pd.read_csv(train_path)
     test_dataframe = pd.read_csv(test_path)
     
-    split = train_dataframe.shape[0] / num_epochs
-    split_test = test_dataframe.shape[0] / num_epochs
+    split = train_dataframe.shape[0] / batch_size
+    split_test = test_dataframe.shape[0] / batch_size
     split = int(split)
     split_test = int(split_test)
 
-    for epoch in range(num_epochs):
-        train_1hot = mlp_helper.to1hot(train_dataframe[:split])
-        if epoch == 0:
-            train_data = torch.Tensor(train_1hot.values)
-        else:
-            train_data = torch.cat((train_data, torch.tensor(train_1hot.values)), 1)
+    for batch in range(batch_size):
+        #Converting from pandas to tensor for training and testing
+        train_1hot_labels = mlp_helper.to1hot(train_dataframe['sentiment'][:split])
+        train_1hot_features = mlp_helper.to1hot(train_dataframe['body'][:split])
         train_dataframe = train_dataframe[split:]
 
-        test_1hot = mlp_helper.to1hot(test_dataframe[:split_test])
-        if epoch == 0:
-            test_data = torch.Tensor(test_1hot.values)
-        else:
-            test_data = torch.cat((test_data, torch.tensor(test_1hot.values)), 1)
+        test_1hot_labels = mlp_helper.to1hot(test_dataframe['sentiment'][:split_test])
+        test_1hot_features = mlp_helper.to1hot(test_dataframe['body'][:split_test])
         test_dataframe = test_dataframe[split_test:]
+
     
-    return train_data, test_data
-
-def mlp(train_data, test_data, lr, num_epochs, batch_size):
-    """Trains the data through an mlp"""
-
-    model = MLPClassifier(hidden_layer_sizes=(6,5),
-                    random_state=5,
-                    verbose=True,
-                    learning_rate_init=lr)
+        clf = MLPClassifier(random_state=1, max_iter=300).fit(train_1hot_features, train_1hot_labels)
+        clf.predict_proba(test_1hot_features[:1])
+        clf.predict(test_1hot_features[:5, :])
+        clf.score(test_1hot_features, test_1hot_labels)
     
-
-    for epoch in range(num_epochs):
-        # Train for one epoch
-        losses = []
-        for X_batch, y_batch in mlp_helper.data_iter(batch_size=batch_size, db=train_data):
-                # Reformat data
-            # Use model to compute predictions
-            yhat = model(X_batch)
-            l = mlp_helper.cross_entropy(yhat, y_batch)  # Minibatch loss in `X_batch` and `y_batch`
-
-            # Compute gradients by back propagation
-            l.backward()
-
-            # Update parameters using their gradient
-            mlp_helper.sgd(model, lr, 0.9)
-
-            losses.append(l.detach().item())
-
-        # Measure accuracy on the test set
-        acc = []
-        for X_batch, y_batch in mlp_helper.data_iter(batch_size=16, db=test_data):
-            yhat = model(X_batch)
-            acc.append(mlp_helper.accuracy(yhat, y_batch))
-
-        print(f"Epoch {epoch+1}: Train Loss {np.mean(losses):.3f} Test Accuracy {np.mean(acc):.3f}", flush=True)
-
-
-
-    print(train_data)
-    #test_data=torch.tensor(test_data)
-
-    return 0
 
 
 
@@ -95,15 +51,10 @@ def main():
 
     # Hyperparameters
     num_epochs = 50
-    lr = 0.01
     batch_size = 16
+    lr = 0.01
 
-    train_data, test_data = converter(raw_train_path, raw_test_path,num_epochs)
-
-    print("Training Data Shape: ", train_data.shape)
-
-    #mlp(train_data, test_data, lr, num_epochs, batch_size)
-
+    mlp_trainer(raw_train_path, raw_test_path, num_epochs, lr, batch_size)
 
 
 if __name__ == "__main__":
