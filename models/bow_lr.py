@@ -3,6 +3,7 @@ from sklearn.linear_model import LogisticRegression
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 import datetime
+from sklearn.neural_network import MLPClassifier
 
 
 def create_count_vector(df: pd.DataFrame) -> CountVectorizer:
@@ -18,7 +19,7 @@ def create_count_vector(df: pd.DataFrame) -> CountVectorizer:
     return cv
 
 
-def train_bow(train_df: pd.DataFrame, cv: None | CountVectorizer = None) -> LogisticRegression:
+def train_bow_lr(train_df: pd.DataFrame, cv: None | CountVectorizer = None) -> LogisticRegression:
     """
     Train a logistic regression on data from input path.
     :param cv: input CountVectorizer (if any)
@@ -36,6 +37,24 @@ def train_bow(train_df: pd.DataFrame, cv: None | CountVectorizer = None) -> Logi
     # https://stackoverflow.com/questions/62658215/convergencewarning-lbfgs-failed-to-converge-status-1-stop-total-no-of-iter
 
     return log_reg
+
+
+def train_bow_mlp(train_df: pd.DataFrame, cv: None | CountVectorizer = None) -> MLPClassifier:
+    """
+    Train a logistic regression on data from input path.
+    :param cv: input CountVectorizer (if any)
+    :param train_df: dataframe of training set
+    :return: an MLP model
+    """
+    if cv is None:
+        cv = create_count_vector(train_df)
+
+    x_train, y_train = format_df_to_bow(cv, train_df)
+
+    # Train an MLP on the transformed data
+    mlp = MLPClassifier(random_state=7, max_iter=4000).fit(x_train, y_train)
+
+    return mlp
 
 
 def format_df_to_bow(cv: CountVectorizer, df: pd.DataFrame) -> (pd.Series, pd.Series):
@@ -63,9 +82,14 @@ def main():
     val_df = pd.read_csv(val_path)
     test_df = pd.read_csv(test_path)
 
+    # Smaller dataset
+    train_df = train_df.head(100)
+    val_df = val_df.head(100)
+    test_df = test_df.head(100)
+
     # Train model
     cv = create_count_vector(train_df)
-    bow_model = train_bow(train_df, cv)
+    bow_model = train_bow_mlp(train_df, cv)
 
     # Get accuracy
     x_train, y_train = format_df_to_bow(cv, train_df)
