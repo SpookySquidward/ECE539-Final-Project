@@ -90,16 +90,27 @@ if __name__ == "__main__":
     # Quick-and-dirty example for lr/batch_size
     with keep.running() as k:
         print("Successfully locked PC to prevent it sleeping during training!" if k.success else "Wasn't able to lock PC from sleeping during training!")
+        print(embeddings.review_embedder.list_available_models())
         
-        for lr in [0.001, 0.003, 0.01, 0.03, 0.01]:
-            for batch_size in [16, 32, 64, 128, 256]:
-                print(f"\n\n\nTesting lr of {lr}, batch_size of {batch_size}...")
-                runner, train_sampler, val_sampler = construct_experiment(train_reviews, val_reviews, lr=lr, batch_size=batch_size)
+        target_epochs = 5
+        
+        batch_size = 256
+        
+        for lr in [0.002, 0.001, 0.0005, 0.0002, 0.0001]:
+            for embedding_model in ['fasttext-wiki-news-subwords-300', 'conceptnet-numberbatch-17-06-300', 'word2vec-google-news-300', 'glove-wiki-gigaword-50', 'glove-wiki-gigaword-100', 'glove-wiki-gigaword-200', 'glove-wiki-gigaword-300', 'glove-twitter-25', 'glove-twitter-50', 'glove-twitter-100', 'glove-twitter-200']:
+                    
+                print(f"\n\n\nTesting lr of {lr}, batch_size of {batch_size}, embedding model '{embedding_model}'")
+                runner, train_sampler, val_sampler = construct_experiment(train_reviews, val_reviews, lr=lr, batch_size=batch_size, embedding_model=embedding_model)
                 
-                if file_exists(runner._model_name):
-                    print("Model already exists! This might not actually mean it was fully-trained... Skipping...")
+                remaining_epochs = target_epochs - runner._epoch
+                
+                if remaining_epochs <= 0:
+                    print("Model is already trained! Skipping...")
+                    print(f"Best accuracy histories: {np.max(runner._train_acc_history)*100:.2f}% train in epoch {np.argmax(runner._train_acc_history) + 1}, {np.max(runner._val_acc_history)*100:.2f}% val after epoch {np.argmax(runner._val_acc_history) + 1}")
                     continue
+                else:
+                    print(f"Training {remaining_epochs} more epochs...")
                 
-                runner.train(train_sampler, 10, val_sampler)
+                runner.train(train_sampler, remaining_epochs, val_sampler)
                 
-                print("Final train/val accuracy histories:", runner._train_acc_history, runner._val_acc_history, sep='\n')
+                print(f"Best accuracy histories: {np.max(runner._train_acc_history)*100:.2f}% train in epoch {np.argmax(runner._train_acc_history) + 1}, {np.max(runner._val_acc_history)*100:.2f}% val after epoch {np.argmax(runner._val_acc_history) + 1}")
