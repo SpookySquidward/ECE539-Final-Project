@@ -13,7 +13,7 @@ def create_count_vector(df: pd.DataFrame) -> CountVectorizer:
     :param df: data frame of reviews
     :return: count vectorizer fitted to input dataframe
     """
-    text = df[["title", "body"]].agg(" ".join, axis=1)
+    text = df["title"].astype(str) + " " + df["body"].astype(str)
     cv = CountVectorizer()
     cv.fit(text)
     return cv
@@ -64,7 +64,7 @@ def format_df_to_bow(cv: CountVectorizer, df: pd.DataFrame) -> (pd.Series, pd.Se
     :param df: dataframe with reviews
     :return: tuple of x (words/feature) and y (label)
     """
-    text = df[["title", "body"]].agg(" ".join, axis=1) # Join on columns
+    text = df["title"].astype(str) + " " + df["body"].astype(str)
     x = cv.transform(text)
     y = df["sentiment"]
 
@@ -81,8 +81,8 @@ def main():
     test_df = pd.read_csv(test_path)
 
     # Smaller dataset
-    # train_df = train_df.head(1000)
-    # test_df = test_df.head(1000)
+    train_df = train_df.head(25000)
+    test_df = test_df.head(25000)
 
     # Train model
     cv = create_count_vector(train_df)
