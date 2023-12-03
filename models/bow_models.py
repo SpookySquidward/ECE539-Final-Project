@@ -91,11 +91,11 @@ def main():
 
     # Get test metrics
     x_test, y_test = format_df_to_bow(cv, test_df)
-    mlp_metrics_dir = project_root.joinpath("metrics", "bow_mlp_test_1000")
+    mlp_metrics_dir = project_root.joinpath("metrics", "bow_mlp_test")
     Path(mlp_metrics_dir).mkdir(parents=True, exist_ok=True)
     get_metrics(bow_mlp_model, x_test, y_test, mlp_metrics_dir)
 
-    lr_metrics_dir = project_root.joinpath("metrics", "bow_lr_test_1000")
+    lr_metrics_dir = project_root.joinpath("metrics", "bow_lr_test")
     Path(lr_metrics_dir).mkdir(parents=True, exist_ok=True)
     get_metrics(bow_lr_model, x_test, y_test, lr_metrics_dir)
 
