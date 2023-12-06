@@ -1,6 +1,10 @@
 # Don't track the dataset through git, as it's giant
 /dataset/*.csv
 
+# Add n exception for the demo test/train datasets
+!/dataset/demo_train.csv
+!/dataset/demo_test.csv
+
 
 
 # All the following are Python3 defaults fron GitHub
