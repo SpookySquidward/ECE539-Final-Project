@@ -56,6 +56,7 @@ def get_metrics(model, x_df, y_df, save_dir: Path) -> None:
     accuracy = accuracy_score(y_df, predicted_labels)
     f1_pos = f1_score(y_df, predicted_labels, average='binary', pos_label="positive")
     f1_neg = f1_score(y_df, predicted_labels, average='binary', pos_label="negative")
+    f1_mean = (f1_pos + f1_neg) / 2
 
     current_time = datetime.datetime.now()
     file_path = save_dir.joinpath("metrics.txt")
@@ -65,6 +66,7 @@ def get_metrics(model, x_df, y_df, save_dir: Path) -> None:
         res_file.write(f'\nAccuracy: {round(accuracy, 3)}')
         res_file.write(f'\nF1 positive label: {round(f1_pos, 3)}')
         res_file.write(f'\nF1 negative label: {round(f1_neg, 3)}')
+        res_file.write(f'\nF1 mean score: {round(f1_mean, 3)}')
 
     # Confusion Matrix
     conf_matrix = confusion_matrix(y_df, predicted_labels)
