@@ -9,6 +9,8 @@ from models.lstm import review_LSTM
 from save_load_model_parameters import file_exists
 from wakepy import keep
 from typing import Tuple, Any, OrderedDict
+from data_visualization import metrics
+from pathlib import Path
 
 
 def construct_experiment(train_reviews: list[dataset.review],
@@ -87,30 +89,57 @@ if __name__ == "__main__":
     reader.open_csv(val_path, skip_header=True)
     val_reviews = reader.read(-1)
     
+    test_path = os.path.join(os.path.curdir, "dataset", "formatted_test.csv")
+    reader.open_csv(test_path, skip_header=True)
+    test_reviews = reader.read(-1)
+    
     # Quick-and-dirty example for lr/batch_size
     with keep.running() as k:
         print("Successfully locked PC to prevent it sleeping during training!" if k.success else "Wasn't able to lock PC from sleeping during training!")
-        print(embeddings.review_embedder.list_available_models())
         
-        target_epochs = 5
-        
+        target_epochs = 25
         batch_size = 256
-        
-        for lr in [0.002, 0.001, 0.0005, 0.0002, 0.0001]:
-            for embedding_model in ['fasttext-wiki-news-subwords-300', 'conceptnet-numberbatch-17-06-300', 'word2vec-google-news-300', 'glove-wiki-gigaword-50', 'glove-wiki-gigaword-100', 'glove-wiki-gigaword-200', 'glove-wiki-gigaword-300', 'glove-twitter-25', 'glove-twitter-50', 'glove-twitter-100', 'glove-twitter-200']:
-                    
-                print(f"\n\n\nTesting lr of {lr}, batch_size of {batch_size}, embedding model '{embedding_model}'")
-                runner, train_sampler, val_sampler = construct_experiment(train_reviews, val_reviews, lr=lr, batch_size=batch_size, embedding_model=embedding_model)
+        embedding_model = "glove-twitter-100"
+        out_classifier_name = '3-layer-ff'
+        lstm_layers = 1
+        for (lr, lstm_hidden_size) in [(0.0005, 100), (0.0001, 300)]:
                 
-                remaining_epochs = target_epochs - runner._epoch
+            out_classifier = nn.Sequential(nn.Linear(lstm_hidden_size * lstm_layers, 100),
+                                            nn.ReLU(),
+                                            nn.Linear(100, 100),
+                                            nn.ReLU(),
+                                            nn.Linear(100, 2),
+                                            nn.Softmax(dim=1))
                 
-                if remaining_epochs <= 0:
-                    print("Model is already trained! Skipping...")
-                    print(f"Best accuracy histories: {np.max(runner._train_acc_history)*100:.2f}% train in epoch {np.argmax(runner._train_acc_history) + 1}, {np.max(runner._val_acc_history)*100:.2f}% val after epoch {np.argmax(runner._val_acc_history) + 1}")
-                    continue
-                else:
-                    print(f"Training {remaining_epochs} more epochs...")
-                
-                runner.train(train_sampler, remaining_epochs, val_sampler)
-                
-                print(f"Best accuracy histories: {np.max(runner._train_acc_history)*100:.2f}% train in epoch {np.argmax(runner._train_acc_history) + 1}, {np.max(runner._val_acc_history)*100:.2f}% val after epoch {np.argmax(runner._val_acc_history) + 1}")
+            print(f"\n\n\nTesting lr of {lr}, batch_size of {batch_size}, embedding model '{embedding_model}', classifier '{out_classifier_name}', {lstm_layers} LSTM layers, lstm_hidden_size {lstm_hidden_size}")
+            runner, test_sampler, val_sampler = construct_experiment(test_reviews, val_reviews, lr=lr, batch_size=batch_size, embedding_model=embedding_model, lstm_output_classifier=out_classifier, lstm_output_classifier_name=out_classifier_name, lstm_layers=lstm_layers, lstm_hidden_size=lstm_hidden_size)
+            
+            print(f"Train accuracy history:\n{runner._train_acc_history}\n")
+            print(f"Val accuracy history:\n{runner._val_acc_history}\n")
+            
+            y_test, yhat_test = runner.predict_dataset(test_sampler)
+            metrics.get_metrics(y_test, yhat_test, Path('./metrics/lstm_' + str(lstm_hidden_size)))
+            
+            
+            # remaining_epochs = target_epochs - runner._epoch
+            
+            # if remaining_epochs <= 0:
+            #     print("Model is already trained! Skipping...")
+            #     print(f"Best accuracy histories: {np.max(runner._train_acc_history)*100:.2f}% train in epoch {np.argmax(runner._train_acc_history) + 1}, {np.max(runner._val_acc_history)*100:.2f}% val after epoch {np.argmax(runner._val_acc_history) + 1}")
+            #     continue
+            # else:
+            #     print(f"Training {remaining_epochs} more epochs...")
+            
+            # runner.train(train_sampler, remaining_epochs, val_sampler)
+            
+            # print(f"Best accuracy histories: {np.max(runner._train_acc_history)*100:.2f}% train in epoch {np.argmax(runner._train_acc_history) + 1}, {np.max(runner._val_acc_history)*100:.2f}% val after epoch {np.argmax(runner._val_acc_history) + 1}")
+    
+    
+    
+        # # (classifier, name)
+        # output_classifiers = [
+        #     (None, 'linear'),
+        #     (nn.Sequential(nn.Linear(100, 100), nn.ReLU(), nn.Linear(100, 2), nn.Softmax(dim=1)), '2-layer-ff'),
+        #     (nn.Sequential(nn.Linear(100, 100), nn.ReLU(), nn.Linear(100, 100), nn.ReLU(), nn.Linear(100, 2), nn.Softmax(dim=1)), '3-layer-ff'),
+        #     (nn.Sequential(nn.Linear(100, 100), nn.ReLU(), nn.Linear(100, 100), nn.ReLU(), nn.Linear(100, 100), nn.ReLU(), nn.Linear(100, 2), nn.Softmax(dim=1)), '4-layer-ff')
+        # ]
