@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import datetime
 from pathlib import Path
+import numpy as np
 
 
-def graphical_confusion_matrix(conf_matrix: confusion_matrix, save_dir: Path) -> None:
+def graphical_confusion_matrix(conf_matrix: np.ndarray, save_dir: Path) -> None:
     """
     Create a graphical confusion metric and save it in save_dir.
     :param conf_matrix: confusion matrix
@@ -21,7 +22,7 @@ def graphical_confusion_matrix(conf_matrix: confusion_matrix, save_dir: Path) ->
     fig.savefig(save_dir.joinpath("graphical_confusion_matrix.png"))
 
 
-def pie_chart_confusion_matrix(conf_matrix: confusion_matrix, save_dir: Path) -> None:
+def pie_chart_confusion_matrix(conf_matrix: np.ndarray, save_dir: Path) -> None:
     """
     Create a pie chart of the confusion matrix and save it in save_dir.
     :param conf_matrix: confusion matrix
@@ -44,7 +45,7 @@ def pie_chart_confusion_matrix(conf_matrix: confusion_matrix, save_dir: Path) ->
     fig.savefig(save_dir.joinpath("pie_chart_confusion_matrix.png"))
 
 
-def get_metrics(model, x_df, y_df, save_dir: Path) -> None:
+def get_metrics(model, x_df: pd.DataFrame | np.ndarray, y_df: pd.DataFrame | np.ndarray, save_dir: Path) -> None:
     """
     Get all metrics for model - model must have .predict() method!
     :param model: trained model
