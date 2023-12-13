@@ -1,0 +1,21 @@
+2023-12-13 13:35:16.499630
+Accuracy: 0.72
+F1 positive label: 0.759
+F1 negative label: 0.667
+F1 mean score: 0.7132023-12-13 14:08:33.960456
+Accuracy: 0.72
+F1 positive label: 0.759
+F1 negative label: 0.667
+F1 mean score: 0.7132023-12-13 14:11:14.794010
+Accuracy: 0.72
+F1 positive label: 0.759
+F1 negative label: 0.667
+F1 mean score: 0.7132023-12-13 14:14:07.788379
+Accuracy: 0.769
+F1 positive label: 0.757
+F1 negative label: 0.78
+F1 mean score: 0.7682023-12-13 14:21:23.484226
+Accuracy: 0.769
+F1 positive label: 0.757
+F1 negative label: 0.78
+F1 mean score: 0.768
