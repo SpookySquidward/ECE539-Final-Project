@@ -3,7 +3,7 @@ from sklearn.linear_model import LogisticRegression
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.neural_network import MLPClassifier
-from metrics.metrics import get_metrics
+from data_visualization.metrics import get_metrics
 
 
 def create_count_vector(df: pd.DataFrame) -> CountVectorizer:
